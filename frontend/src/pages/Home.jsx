@@ -15,12 +15,12 @@ const SCAN = 200;
 function Steps() {
   const { dict } = useI18n();
   return (
-    <ol className="grid gap-px overflow-hidden rounded-sm border border-night-line/70 bg-night-line/70 sm:grid-cols-3">
+    <ol className="grid gap-px overflow-hidden rounded-sm border border-day-line/70 bg-day-line/70 sm:grid-cols-3">
       {dict.home.steps.map((step, index) => (
-        <li key={step.title} className="bg-night-soft/70 p-8 sm:p-9">
-          <span className="font-display text-3xl text-flame/45">{`0${index + 1}`}</span>
-          <h3 className="mt-5 font-display text-xl text-stone-50">{step.title}</h3>
-          <p className="mt-3 text-sm leading-relaxed text-stone-400">{step.body}</p>
+        <li key={step.title} className="bg-day-soft/70 p-8 sm:p-9">
+          <span className="font-display text-3xl text-sun-deep/45">{`0${index + 1}`}</span>
+          <h3 className="mt-5 font-display text-xl text-ink">{step.title}</h3>
+          <p className="mt-3 text-sm leading-relaxed text-ink-muted">{step.body}</p>
         </li>
       ))}
     </ol>
@@ -49,7 +49,7 @@ export default function Home() {
                 tone="quiet"
                 size="sm"
                 to="/wall"
-                className="shrink-0 text-flame/85 hover:text-flame-glow"
+                className="shrink-0 text-tekhelet hover:text-tekhelet-deep"
               >
                 {t("home.viewAll")}
               </Action>

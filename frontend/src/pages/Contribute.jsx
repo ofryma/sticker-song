@@ -48,8 +48,8 @@ export default function Contribute() {
     <Page className="max-w-2xl pb-28 sm:pb-8">
       <header className="mb-12">
         <p className="eyebrow mb-4">{t("contribute.kicker")}</p>
-        <h1 className="font-display text-3xl text-stone-50 sm:text-4xl">{t("contribute.title")}</h1>
-        <p className="mt-4 text-sm text-stone-400">{t("contribute.lead")}</p>
+        <h1 className="font-display text-3xl text-ink sm:text-4xl">{t("contribute.title")}</h1>
+        <p className="mt-4 text-sm text-ink-muted">{t("contribute.lead")}</p>
       </header>
 
       <StepRail stepIndex={form.stepIndex} total={form.total} onJump={form.goTo} />
@@ -73,10 +73,10 @@ export default function Contribute() {
         {form.isLast && <DraftReview draft={form.draft} preview={form.preview} />}
 
         {form.state === "error" && (
-          <div className="mt-10 animate-fade rounded-sm border border-flame-warm/40 bg-flame-warm/[0.06] px-5 py-4">
-            <p className="text-sm text-flame-glow">{t("contribute.errorTitle")}</p>
+          <div className="mt-10 animate-fade rounded-sm border border-sun/50 bg-sun-pale/60 px-5 py-4">
+            <p className="text-sun-deep text-sm">{t("contribute.errorTitle")}</p>
             {form.error?.message && (
-              <p className="mt-2 break-words text-xs leading-relaxed text-stone-400">
+              <p className="mt-2 break-words text-xs leading-relaxed text-ink-muted">
                 {form.error.message}
               </p>
             )}
@@ -86,8 +86,8 @@ export default function Contribute() {
         {/* Mobile: the actions stay pinned above the bottom bar so the primary
             step is always one thumb away. Desktop: an ordinary footer row. */}
         <div
-          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-night-line/70 bg-night/95 px-4 py-3 backdrop-blur-md
-            sm:static sm:mt-14 sm:gap-4 sm:border-night-line/70 sm:bg-transparent sm:px-0 sm:pt-8 sm:backdrop-blur-none"
+          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-day-line/70 bg-day/95 px-4 py-3 backdrop-blur-md
+            sm:static sm:mt-14 sm:gap-4 sm:border-day-line/70 sm:bg-transparent sm:px-0 sm:pt-8 sm:backdrop-blur-none"
         >
           {form.stepIndex > 0 && (
             <Action tone="quiet" size="sm" onPress={form.back} isDisabled={saving}>

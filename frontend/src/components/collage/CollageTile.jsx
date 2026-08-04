@@ -22,25 +22,26 @@ export function CollageTile({ slot, entry, generation, onOpen, still }) {
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 1.02, filter: "blur(6px)" }}
           transition={TRANSITION}
-          className="group absolute inset-x-0 top-0 block origin-center overflow-hidden rounded-sm
-            border border-stone-200/10 bg-night-soft shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)]
-            focus-visible:ring-2 focus-visible:ring-flame/70 focus-visible:outline-none"
+          className="group border-day-line bg-day focus-visible:ring-tekhelet/70 absolute inset-x-0
+            top-0 block origin-center overflow-hidden rounded-sm border p-1.5
+            shadow-[0_14px_34px_-22px_rgba(33,30,24,0.45)] focus-visible:ring-2
+            focus-visible:outline-none"
         >
-          <span className="relative block aspect-4/5">
+          {/* Photograph, then a paper strip under it — a printed sticker rather
+              than a name written across someone's face. */}
+          <span className="bg-day-warm block aspect-4/5 overflow-hidden rounded-[1px]">
             <img
               src={imageUrl(entry)}
               alt={t("entry.photo", { name: entry.person_name })}
               loading="lazy"
               decoding="async"
-              className="h-full w-full object-cover grayscale-[0.3] transition-all duration-2400
-                ease-memorial group-hover:grayscale-0"
+              className="duration-2400 ease-calm h-full w-full object-cover transition-transform
+                group-hover:scale-[1.02]"
             />
-            {/* The name stays legible without a caption bar competing with the photo. */}
-            <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night/95 via-night/25 to-transparent" />
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 p-2.5 text-start">
-              <span className="block truncate font-serif text-[0.8rem] leading-tight text-stone-50 sm:text-sm">
-                {entry.person_name}
-              </span>
+          </span>
+          <span className="pointer-events-none block px-0.5 pt-1.5 pb-0.5 text-start">
+            <span className="text-ink block truncate font-serif text-[0.8rem] leading-tight sm:text-sm">
+              {entry.person_name}
             </span>
           </span>
         </motion.button>

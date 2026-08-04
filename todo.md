@@ -3,6 +3,8 @@
 ## Features
 
 * Analyze input from user with llm
+* Add draft step for entries to make sure every new entry is being reviewd before being uploaded
+  That way we never upload something offensive or incomplete.
 * Seed the wall with real entries before launch — an empty archive on day one
   reads as abandoned
 * Not-found route currently renders `Home` silently (`App.jsx`); give it a real
@@ -32,7 +34,7 @@
 * **Reconsider `DUPLICATE_VOTE_THRESHOLD=3`.** Three IPs can permanently destroy
   any entry, and at launch traffic that is trivial to reach. Either raise it,
   gate deletion behind an admin action, or switch to soft delete with a
-  retention window.
+  retention window. (ofry's comment - definitly, should be at least 20)
 * **Rate limiting on `POST /entries` and `/feedback`.** Both are unauthenticated
   and public; the IP blacklist is only reactive. Add limits at the nginx edge
   (`limit_req_zone`) at least.
@@ -69,7 +71,7 @@
 
 ## Observability
 
-* Uptime check against `/healthz` with alerting — it exists and nothing calls it
+* Uptime check against `/healthz` with alerting — it exists and nothing calls it (ofry's comment - lets add uptime kuma)
 * Error tracking on both halves (Sentry or equivalent); a backend 500 is
   currently only visible in `docker logs`
 * Structured request logging with the real client IP, and decide a retention
@@ -109,3 +111,4 @@
   `prefers-reduced-motion`
 * Test on real iOS and Android Safari/Chrome — HEIC upload, the camera picker,
   geolocation over HTTPS, and RTL layout
+* Add link to the github project for project contribution

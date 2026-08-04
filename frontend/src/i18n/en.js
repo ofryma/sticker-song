@@ -16,21 +16,21 @@ export default {
   },
 
   home: {
-    kicker: "Memorial archive",
+    kicker: "Remembering well",
     title: "The wall remembers",
     subtitle:
-      "Memorial stickers hang on utility poles, bus shelters and concrete walls. The rain takes them. Here they are kept.",
+      "Faces, names and words, put up in the street by the people who loved them. Here they stay in the light, whole and in colour.",
     scroll: "Keep scrolling",
-    cta: "Enter the wall",
+    cta: "See the wall",
     ctaSecondary: "Add a sticker you found",
-    countOne: "One name kept",
-    countMany: "{n} names kept",
-    countNone: "The wall is still empty",
+    countOne: "One name remembered here",
+    countMany: "{n} names remembered here",
+    countNone: "The wall is waiting for its first name",
     latest: "Recently added",
-    latestLead: "The last records to arrive from the street.",
+    latestLead: "The names people brought in most recently.",
     viewAll: "See the whole wall",
     howTitle: "Three steps",
-    howLead: "It takes under a minute. The sticker is kept for good.",
+    howLead: "It takes under a minute, and the sticker stays for good.",
     steps: [
       {
         title: "Photograph",
@@ -76,8 +76,10 @@ export default {
     prev: "Previous record",
     next: "Next record",
     openMap: "View on a map",
-    candle: "Light a candle",
-    candleLit: "Candle lit",
+    leaf: "Add a leaf",
+    leafAdded: "Leaf added",
+    leafHint:
+      "A leaf says you stopped here and read their name. It stays on your device, and it is never counted.",
     photo: "Memorial sticker for {name}",
   },
 
@@ -116,7 +118,7 @@ export default {
     notImage: "That file is not an image.",
     tooLarge: "The photo is larger than 10 MB. Try a smaller one.",
     thanksTitle: "Thank you",
-    thanksLead: "The sticker is in the archive. {name} is kept here now.",
+    thanksLead: "The sticker is in the archive. {name} is remembered here now.",
     thanksView: "See the record",
     thanksAnother: "Document another sticker",
     errorTitle: "Saving failed",
@@ -152,9 +154,9 @@ export default {
     kicker: "About",
     title: "Why this exists",
     body: [
-      "After the seventh of October the country filled with stickers. Faces, names, ages, verses. Friends, siblings and parents put them on utility poles and bus shelters, and never meant them to last forever.",
-      "The sun bleaches them, the rain peels them, and a newer sticker goes up on top. This project gathers them before they disappear: one photograph, one name, and the words that were chosen for them.",
-      "There are no ratings here, no comments and no algorithm. Only an archive, open to anyone who wants to add a name they kept.",
+      "After the seventh of October the country filled with stickers. Faces, names, ages, verses — put up on utility poles and bus shelters by friends, siblings and parents who wanted the people they loved to be seen.",
+      "Sun and rain take them down, and a newer sticker goes up on top. This archive keeps them in daylight: one photograph, one name, and the words that were chosen for them.",
+      "There are no ratings here, no comments and no algorithm. Only an archive, open to anyone who wants to add a name they carry.",
     ],
     guidelinesTitle: "One request",
     guidelines: [

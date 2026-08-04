@@ -31,12 +31,12 @@ export function LocationField({ latitude, longitude, onChange }) {
       <Card
         shadow="none"
         radius="sm"
-        className="animate-fade border border-night-line/80 bg-night-soft/70"
+        className="animate-fade border border-day-line/80 bg-day-soft/70"
       >
         <CardBody className="flex flex-row flex-wrap items-center gap-4 px-5 py-4">
           <svg
             viewBox="0 0 24 24"
-            className="h-4 w-4 shrink-0 text-flame/80"
+            className="h-4 w-4 shrink-0 text-olive"
             fill="none"
             aria-hidden="true"
           >
@@ -48,8 +48,8 @@ export function LocationField({ latitude, longitude, onChange }) {
             <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.3" />
           </svg>
           <div className="min-w-0">
-            <p className="text-sm text-stone-200">{t("contribute.locationSet")}</p>
-            <p className="mt-0.5 font-mono text-xs text-stone-500">{coords}</p>
+            <p className="text-sm text-ink">{t("contribute.locationSet")}</p>
+            <p className="mt-0.5 font-mono text-xs text-ink-muted">{coords}</p>
           </div>
           <Action
             tone="quiet"
@@ -75,7 +75,7 @@ export function LocationField({ latitude, longitude, onChange }) {
         {status === "locating" ? t("contribute.locating") : t("contribute.useLocation")}
       </Action>
       {(status === "denied" || status === "unavailable") && (
-        <p className="animate-fade text-sm text-stone-400">
+        <p className="animate-fade text-sm text-ink-muted">
           {t(status === "denied" ? "contribute.locationDenied" : "contribute.locationUnavailable")}
         </p>
       )}

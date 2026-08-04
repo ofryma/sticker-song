@@ -66,7 +66,7 @@ export default function Wall() {
 
       {ready && (
         <div className="mt-6 flex items-center justify-between gap-4">
-          <p className="text-xs tracking-memorial text-stone-500 uppercase">
+          <p className="text-xs tracking-label text-ink-muted uppercase">
             {pluralCount(t, "wall.results", listed ? visible.length : entries.length)}
           </p>
           {listed ? (
@@ -85,10 +85,10 @@ export default function Wall() {
 
       <header className="mt-12 max-w-xl sm:mt-16">
         <p className="eyebrow mb-3">{t("wall.kicker")}</p>
-        <h1 className="font-display text-3xl leading-tight text-stone-50 sm:text-4xl">
+        <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
           {t("wall.title")}
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-stone-400">
+        <p className="mt-4 text-sm leading-relaxed text-ink-muted">
           {listed ? t("wall.lead") : t("wall.collageHint")}
         </p>
       </header>

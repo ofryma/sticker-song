@@ -30,10 +30,10 @@ export function PhotoField({ file, preview, onPick }) {
 
       {preview ? (
         <figure className="animate-fade">
-          <div className="overflow-hidden rounded-sm border border-night-line bg-night">
+          <div className="overflow-hidden rounded-sm border border-day-line bg-day">
             <img src={preview} alt="" className="max-h-[52vh] w-full animate-fade object-contain" />
           </div>
-          <figcaption className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-stone-500">
+          <figcaption className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-muted">
             <span className="truncate">{file?.name}</span>
             {file && <span>{formatBytes(file.size)}</span>}
             <Action
@@ -65,14 +65,14 @@ export function PhotoField({ file, preview, onPick }) {
           }}
           className={[
             "flex w-full flex-col items-center justify-center gap-5 rounded-sm border border-dashed px-6 py-20",
-            "transition-all duration-1200 ease-memorial",
+            "transition-all duration-1200 ease-calm",
             dragging
-              ? "border-flame/60 bg-flame/[0.06]"
-              : "border-night-line hover:border-stone-300/40 hover:bg-night-soft/50",
+              ? "border-olive/60 bg-olive-pale/60"
+              : "border-day-line hover:border-ink/25 hover:bg-day-soft/50",
           ].join(" ")}
         >
           {/* A blank sticker, waiting on the wall. */}
-          <svg viewBox="0 0 48 48" className="h-11 w-11 text-stone-500" fill="none">
+          <svg viewBox="0 0 48 48" className="h-11 w-11 text-ink-muted" fill="none">
             <path
               d="M8 8h24l8 8v24H8z"
               stroke="currentColor"
@@ -88,7 +88,7 @@ export function PhotoField({ file, preview, onPick }) {
               strokeLinejoin="round"
             />
           </svg>
-          <span className="max-w-xs text-center text-sm leading-relaxed text-stone-400">
+          <span className="max-w-xs text-center text-sm leading-relaxed text-ink-muted">
             <span className="hidden sm:inline">{t("contribute.dropzone")}</span>
             <span className="sm:hidden">{t("contribute.dropzoneMobile")}</span>
           </span>
@@ -96,7 +96,7 @@ export function PhotoField({ file, preview, onPick }) {
       )}
 
       {rejected && (
-        <p className="mt-4 animate-fade text-sm text-flame-warm">
+        <p className="mt-4 animate-fade text-sm text-sun-deep">
           {t(rejected === "size" ? "contribute.tooLarge" : "contribute.notImage")}
         </p>
       )}

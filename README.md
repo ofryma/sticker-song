@@ -4,6 +4,26 @@ Document memorial stickers of fallen individuals found in public: upload a photo
 record the person's name and the sticker's text, and optionally attach the GPS
 location where the photo was taken.
 
+## Intent
+
+The archive exists to remember these people in a good and positive way. It is
+respectful and dignified, and it is deliberately **not** sad — the aim is to
+celebrate lives rather than dwell on how they ended. In practice that means:
+
+- **A light, warm theme.** Parchment and Jerusalem stone in daylight (`day-*`
+  surfaces, `ink-*` text), with olive for growth, sun for warmth and tekhelet for
+  action. There is no dark surface anywhere, and photographs are shown whole and
+  in full colour — never dimmed, never greyscaled, never written across.
+- **Positive gestures.** The remembering gesture is a leaf: a visitor adds a leaf
+  to a person, it grows into place, and it stays on their device and is never
+  counted. New features belong to the same family — life, growth, continuity, a
+  memory added alongside a photo — not to rituals of grief.
+- **Copy that centres the person.** Plain, warm, human. No exclamation marks, no
+  emoji, no gamification: warmth comes from light and language, not confetti.
+
+`.claude/rules/frontend.md` is the binding version of this for anyone, human or
+agent, touching the frontend, and it carries the full token map.
+
 ## Stack
 
 | Piece          | Choice                                        |
@@ -271,8 +291,8 @@ will block the "Use current location" button.
 
 ## Contributing
 
-See `CONTRIBUTING.md`. The subject matter is grief, and that is the standard
-everything is held to — copy, motion, colour, error messages.
+See `CONTRIBUTING.md`. Remembrance rather than mourning is the standard everything
+is held to — copy, motion, colour, features, error messages.
 
 ## Licence
 

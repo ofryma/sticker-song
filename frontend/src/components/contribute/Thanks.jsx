@@ -1,6 +1,6 @@
 import { useI18n } from "../../i18n/index.jsx";
 import { Action } from "../ui/Action.jsx";
-import { Candle } from "../Candle.jsx";
+import { Sprig } from "../Sprig.jsx";
 
 /** After a successful save. Gratitude, the name, and a way onward — no fanfare. */
 export function Thanks({ entry, onAnother, onView }) {
@@ -8,12 +8,12 @@ export function Thanks({ entry, onAnother, onView }) {
 
   return (
     <div className="flex flex-col items-center gap-8 py-16 text-center animate-fade-slow">
-      <Candle size={44} />
+      <Sprig size={46} className="animate-unfurl" />
       <div>
-        <h2 className="font-display text-3xl text-stone-50 sm:text-4xl">
+        <h2 className="font-display text-3xl text-ink sm:text-4xl">
           {t("contribute.thanksTitle")}
         </h2>
-        <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-stone-400">
+        <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-ink-muted">
           {t("contribute.thanksLead", { name: entry.person_name })}
         </p>
       </div>
@@ -24,7 +24,7 @@ export function Thanks({ entry, onAnother, onView }) {
           {t("contribute.thanksAnother")}
         </Action>
       </div>
-      <Action tone="quiet" size="sm" to="/wall" className="text-xs tracking-memorial uppercase">
+      <Action tone="quiet" size="sm" to="/wall" className="text-xs tracking-label uppercase">
         {t("nav.wall")}
       </Action>
     </div>

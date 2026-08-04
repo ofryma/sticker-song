@@ -5,19 +5,19 @@ import { LocationField } from "./LocationField.jsx";
 
 /* One place for field styling, so the wizard reads as a single form. */
 const FIELD = {
-  input: "text-base placeholder:text-stone-500",
+  input: "text-base placeholder:text-ink-muted",
   inputWrapper:
-    "border-night-line bg-night/60 transition-colors duration-700 ease-memorial " +
+    "border-day-line bg-day-soft/70 transition-colors duration-700 ease-calm " +
     "hover:border-tekhelet-light/50 group-data-[focus=true]:border-tekhelet-light",
 };
 
 function StepShell({ title, hint, children, blocker }) {
   return (
     <div className="animate-rise" key={title}>
-      <h2 className="font-display text-2xl text-stone-50 sm:text-3xl">{title}</h2>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-stone-400">{hint}</p>
+      <h2 className="font-display text-2xl text-ink sm:text-3xl">{title}</h2>
+      <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-muted">{hint}</p>
       <div className="mt-9">{children}</div>
-      {blocker && <p className="mt-4 animate-fade text-sm text-flame-warm">{blocker}</p>}
+      {blocker && <p className="mt-4 animate-fade text-sm text-sun-deep">{blocker}</p>}
     </div>
   );
 }
@@ -96,19 +96,19 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 export function DraftReview({ draft, preview }) {
   const { t } = useI18n();
   return (
-    <div className="mt-14 border-t border-night-line/70 pt-10">
+    <div className="mt-14 border-t border-day-line/70 pt-10">
       <p className="eyebrow mb-6">{t("contribute.review")}</p>
       <div className="flex flex-col gap-6 sm:flex-row">
         {preview && (
           <img
             src={preview}
             alt=""
-            className="h-32 w-28 shrink-0 rounded-sm border border-night-line object-cover"
+            className="h-32 w-28 shrink-0 rounded-sm border border-day-line object-cover"
           />
         )}
         <div className="min-w-0">
-          <p className="font-display text-xl text-stone-50">{draft.personName}</p>
-          <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-stone-400">
+          <p className="font-display text-xl text-ink">{draft.personName}</p>
+          <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-ink-muted">
             {draft.stickerText}
           </p>
         </div>

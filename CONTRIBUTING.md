@@ -1,9 +1,13 @@
 # Contributing
 
 This is an archive of memorial stickers for fallen individuals, photographed
-where they were found in public. The subject matter is grief, and that sets the
-standard for everything in the repository — copy, motion, colour, error messages,
-commit messages. Nothing celebrates, nothing gamifies, nothing rushes.
+where they were found in public. It exists to remember these people in a good and
+positive way — respectful and dignified, and deliberately not sad. That sets the
+standard for everything in the repository: copy, motion, colour, features, error
+messages, commit messages. The theme is light and warm rather than a night vigil,
+features are about a life rather than a ritual of grief, and nothing gamifies or
+rushes. See the Intent section of `README.md`, and
+`.claude/rules/frontend.md` for the binding frontend version.
 
 Read `README.md` first for the stack and the architecture. Read
 `.claude/rules/frontend.md` before touching anything under `frontend/`.
@@ -118,10 +122,13 @@ version:
 - **Tailwind v4 for layout.** Design tokens live in `src/tokens.css` under
   `@theme` — never hardcode a hex value, a duration or an easing.
 - **No new runtime dependencies without asking.**
-- **Slow and quiet motion.** 700ms–2500ms, `ease-out` or `ease-memorial`. Nothing
-  bounces, springs, pops or overshoots. Everything degrades under
+- **Remembrance, not mourning.** Daylight surfaces (`day-*`), ink text, olive/sun/
+  tekhelet accents; photographs shown whole and in colour; the remembering gesture
+  is a leaf, not a candle. No dark surface anywhere.
+- **Unhurried, gentle motion.** 700ms–2500ms, `ease-out` or `ease-calm`.
+  Nothing bounces, springs, pops or overshoots. Everything degrades under
   `prefers-reduced-motion`.
-- **Copy is plain and never celebratory.** No exclamation marks, no emoji, no
+- **Copy is plain and warm, never gamified.** No exclamation marks, no emoji, no
   counts framed as achievements. A submission is acknowledged with thanks.
 - **Bilingual.** Every user-facing string goes in `src/i18n/he.js` *and*
   `src/i18n/en.js` — `npm run check:rules` fails if the two drift apart. Hebrew

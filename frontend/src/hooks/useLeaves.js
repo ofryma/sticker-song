@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-const STORAGE_KEY = "memorial.candles";
+const STORAGE_KEY = "stickers.leaves";
 
 function read() {
   try {
@@ -11,14 +11,15 @@ function read() {
 }
 
 /**
- * Candles a visitor has lit. Deliberately local to the device: this is a
- * private gesture, not a public counter, and it is never sent anywhere.
+ * Leaves a visitor has added — one per person, a way of saying "I stopped here
+ * and I remember them". Deliberately local to the device: a private gesture,
+ * never a public counter, and never sent anywhere.
  */
-export function useCandles() {
-  const [lit, setLit] = useState(read);
+export function useLeaves() {
+  const [added, setAdded] = useState(read);
 
-  const light = useCallback((id) => {
-    setLit((current) => {
+  const add = useCallback((id) => {
+    setAdded((current) => {
       if (current.has(id)) return current;
       const next = new Set(current).add(id);
       try {
@@ -30,5 +31,5 @@ export function useCandles() {
     });
   }, []);
 
-  return { isLit: useCallback((id) => lit.has(id), [lit]), light };
+  return { hasLeaf: useCallback((id) => added.has(id), [added]), add };
 }
