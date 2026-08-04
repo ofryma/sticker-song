@@ -45,7 +45,12 @@ export default function Home() {
             title={t("home.latest")}
             lead={t("home.latestLead")}
             action={
-              <Action tone="quiet" size="sm" to="/wall" className="shrink-0 text-flame/85 hover:text-flame-glow">
+              <Action
+                tone="quiet"
+                size="sm"
+                to="/wall"
+                className="shrink-0 text-flame/85 hover:text-flame-glow"
+              >
                 {t("home.viewAll")}
               </Action>
             }
@@ -58,7 +63,11 @@ export default function Home() {
         </Section>
 
         <Section className="pb-4">
-          <SectionHeading kicker={t("contribute.kicker")} title={t("home.howTitle")} lead={t("home.howLead")} />
+          <SectionHeading
+            kicker={t("contribute.kicker")}
+            title={t("home.howTitle")}
+            lead={t("home.howLead")}
+          />
           <Steps />
           <div className="mt-12 flex justify-center">
             <Action to="/contribute" size="lg">

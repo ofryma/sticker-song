@@ -68,9 +68,20 @@ export function EntryDetail({ entry, onClose, onPrev, onNext }) {
                 <Arrow label={t("entry.prev")} onPress={onPrev} />
                 <Arrow label={t("entry.next")} onPress={onNext} flip />
               </div>
-              <Action tone="quiet" isIconOnly size="sm" onPress={onClose} aria-label={t("entry.close")}>
+              <Action
+                tone="quiet"
+                isIconOnly
+                size="sm"
+                onPress={onClose}
+                aria-label={t("entry.close")}
+              >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </Action>
             </div>
@@ -89,9 +100,7 @@ export function EntryDetail({ entry, onClose, onPrev, onNext }) {
                 coords={formatCoords(entry.latitude, entry.longitude)}
                 dateLabel={formatDate(entry.created_at, locale)}
                 hebrewDate={lang === "he" ? formatHebrewDate(entry.created_at) : null}
-                mapHref={
-                  entry.latitude != null ? mapUrl(entry.latitude, entry.longitude) : null
-                }
+                mapHref={entry.latitude != null ? mapUrl(entry.latitude, entry.longitude) : null}
                 candle={
                   <Action
                     tone={lit ? "candle" : "ghost"}

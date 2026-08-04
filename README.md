@@ -169,7 +169,32 @@ make down      # stop
 make reset     # stop and wipe database + object storage
 make logs      # tail backend and frontend
 make migration m="add moderation flag"   # autogenerate a migration
+make test      # backend test suite
+make lint      # ruff + eslint + prettier + the frontend rule checks
+make check     # everything CI checks
 ```
+
+## Tests and CI
+
+`CONTRIBUTING.md` has the detail. The short version:
+
+```bash
+cd backend  && uv run pytest    # unit tests always run
+cd frontend && npm run check    # eslint, prettier, 300-line limit, he/en parity
+```
+
+The backend suite is in two tiers. Unit tests — name normalization, image
+conversion, the best-image ranking — need nothing. Integration tests need a real
+Postgres, because duplicate detection is `pg_trgm.similarity()` and the
+vote-deletion path leans on `ON DELETE CASCADE`; they create their own database
+at `TEST_DATABASE_URL` (default `…@localhost:5442/stickers_test`) and **skip**
+when nothing is listening. A green run with 44 skips has not tested duplicate
+matching — bring Postgres up with `docker compose up postgres`. CI sets
+`REQUIRE_DATABASE=1`, which makes the skip a failure. MinIO is faked in-process.
+
+`.github/workflows/docker-images.yml` runs ruff and pytest for the backend and
+eslint, prettier and the frontend rule checks for the frontend, and only builds
+the images if all of that passes.
 
 ## Deployment (single server)
 
@@ -216,8 +241,9 @@ interactive docs.
 
 ### Images
 
-`.github/workflows/docker-images.yml` builds both images on every push to `main`
-and every `v*` tag, and pushes them to GHCR:
+`.github/workflows/docker-images.yml` lints and tests both halves, then builds
+both images on every push to `main` and every `v*` tag and pushes them to GHCR.
+The image job depends on the check jobs, so a failing test publishes nothing:
 
 | Image                                        | Dockerfile target        |
 | -------------------------------------------- | ------------------------ |
@@ -242,3 +268,14 @@ image; the bucket is private, which is why images are proxied.
 Geolocation in the browser requires a secure context — it works on
 `http://localhost`, but exposing the frontend over plain HTTP on a LAN address
 will block the "Use current location" button.
+
+## Contributing
+
+See `CONTRIBUTING.md`. The subject matter is grief, and that is the standard
+everything is held to — copy, motion, colour, error messages.
+
+## Licence
+
+GNU Affero General Public License v3.0 — see `LICENSE`. Section 13 applies:
+anyone running a modified version as a network service must offer its source to
+the people using it.

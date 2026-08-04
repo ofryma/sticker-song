@@ -100,8 +100,7 @@ export default {
     textHint: "Copy everything written on it — verse, date, nickname, unit.",
     textPlaceholder: "Everything written on the sticker",
     locationTitle: "Where it was photographed",
-    locationHint:
-      "Optional. Location helps show how the stickers move through a city.",
+    locationHint: "Optional. Location helps show how the stickers move through a city.",
     useLocation: "Use my current location",
     locating: "Finding location",
     locationSet: "Location attached",
@@ -144,7 +143,8 @@ export default {
     voted: "You have already voted for this photo.",
     progress: "{n} of {threshold} votes",
     resolvedTitle: "The duplicates were merged",
-    resolvedLead: "Records carrying exactly the same name were removed, and the chosen photograph stayed.",
+    resolvedLead:
+      "Records carrying exactly the same name were removed, and the chosen photograph stayed.",
     skip: "Keep both",
   },
 

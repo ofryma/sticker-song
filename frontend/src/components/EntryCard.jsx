@@ -36,8 +36,10 @@ export function EntryCard({ entry, index = 0, onOpen }) {
           ].join(" ")}
         />
         {/* Light falls from above; the name sits in the dark at the bottom. */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night via-night/45 to-transparent
-          transition-opacity duration-1800 ease-memorial group-hover:opacity-80" />
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night via-night/45 to-transparent
+          transition-opacity duration-1800 ease-memorial group-hover:opacity-80"
+        />
       </div>
 
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">

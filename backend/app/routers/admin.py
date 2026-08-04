@@ -24,9 +24,7 @@ async def require_admin(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid admin token")
 
 
-router = APIRouter(
-    prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)]
-)
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
 @router.post(

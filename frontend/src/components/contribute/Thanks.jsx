@@ -10,7 +10,9 @@ export function Thanks({ entry, onAnother, onView }) {
     <div className="flex flex-col items-center gap-8 py-16 text-center animate-fade-slow">
       <Candle size={44} />
       <div>
-        <h2 className="font-display text-3xl text-stone-50 sm:text-4xl">{t("contribute.thanksTitle")}</h2>
+        <h2 className="font-display text-3xl text-stone-50 sm:text-4xl">
+          {t("contribute.thanksTitle")}
+        </h2>
         <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-stone-400">
           {t("contribute.thanksLead", { name: entry.person_name })}
         </p>

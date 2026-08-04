@@ -1,4 +1,5 @@
 .PHONY: up down logs build reset migration backend-shell \
+        test test-backend lint lint-backend lint-frontend check \
         prod-pull prod-up prod-down prod-logs
 
 PROD := docker compose -f docker-compose.prod.yml
@@ -23,6 +24,23 @@ migration:                 ## make migration m="add column"
 
 backend-shell:
 	docker compose exec backend bash
+
+# --- tests and linters (what CI runs) ----------------------------------------
+
+test: test-backend      ## run the test suite
+
+test-backend:              ## integration tests need `docker compose up postgres`
+	cd backend && uv run pytest
+
+lint: lint-backend lint-frontend
+
+lint-backend:
+	cd backend && uv run ruff check . && uv run ruff format --check .
+
+lint-frontend:             ## eslint, prettier, 300-line limit, he/en key parity
+	cd frontend && npm run check
+
+check: lint test           ## everything CI checks, in one go
 
 # --- production, on the server (needs .env; see .env.prod.example) ------------
 

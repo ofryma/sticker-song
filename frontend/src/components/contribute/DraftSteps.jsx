@@ -29,7 +29,11 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 
   if (step === "photo") {
     return (
-      <StepShell title={t("contribute.photoTitle")} hint={t("contribute.photoHint")} blocker={message}>
+      <StepShell
+        title={t("contribute.photoTitle")}
+        hint={t("contribute.photoHint")}
+        blocker={message}
+      >
         <PhotoField file={draft.image} preview={preview} onPick={setImage} />
       </StepShell>
     );
@@ -37,7 +41,11 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 
   if (step === "name") {
     return (
-      <StepShell title={t("contribute.nameTitle")} hint={t("contribute.nameHint")} blocker={message}>
+      <StepShell
+        title={t("contribute.nameTitle")}
+        hint={t("contribute.nameHint")}
+        blocker={message}
+      >
         <Input
           value={draft.personName}
           onValueChange={(personName) => set({ personName })}
@@ -57,7 +65,11 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 
   if (step === "text") {
     return (
-      <StepShell title={t("contribute.textTitle")} hint={t("contribute.textHint")} blocker={message}>
+      <StepShell
+        title={t("contribute.textTitle")}
+        hint={t("contribute.textHint")}
+        blocker={message}
+      >
         <Textarea
           value={draft.stickerText}
           onValueChange={(stickerText) => set({ stickerText })}

@@ -81,7 +81,12 @@ export function PhotoField({ file, preview, onPick }) {
             />
             <path d="M32 8v8h8" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
             <circle cx="19" cy="24" r="3.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M12 34l7-6 6 5 5-4 6 5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+            <path
+              d="M12 34l7-6 6 5 5-4 6 5"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
           </svg>
           <span className="max-w-xs text-center text-sm leading-relaxed text-stone-400">
             <span className="hidden sm:inline">{t("contribute.dropzone")}</span>

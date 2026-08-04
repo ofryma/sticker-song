@@ -73,7 +73,12 @@ export function Header() {
 
       <NavbarContent justify="end" className="gap-1 sm:gap-2">
         <NavbarItem>
-          <Action tone="quiet" size="sm" onPress={() => setLang(other)} aria-label={t("nav.language")}>
+          <Action
+            tone="quiet"
+            size="sm"
+            onPress={() => setLang(other)}
+            aria-label={t("nav.language")}
+          >
             {otherName}
           </Action>
         </NavbarItem>

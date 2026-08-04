@@ -37,13 +37,21 @@ export function DuplicateCard({ entry, mine, suggested, chosen, disabled, onChoo
           {resolution && <span className="font-mono">{resolution}</span>}
           <span>{entry.is_exact_match ? t("duplicates.exact") : t("duplicates.similar")}</span>
           {entry.vote_count > 0 && (
-            <Chip size="sm" variant="flat" color="warning" radius="sm" className="h-5 text-[0.6rem]">
+            <Chip
+              size="sm"
+              variant="flat"
+              color="warning"
+              radius="sm"
+              className="h-5 text-[0.6rem]"
+            >
               {t("duplicates.votes", { n: entry.vote_count })}
             </Chip>
           )}
         </div>
 
-        {suggested && <p className="text-[0.65rem] leading-snug text-flame/75">{t("duplicates.best")}</p>}
+        {suggested && (
+          <p className="text-[0.65rem] leading-snug text-flame/75">{t("duplicates.best")}</p>
+        )}
 
         <Action
           tone={chosen ? "candle" : "ghost"}

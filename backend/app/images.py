@@ -99,7 +99,11 @@ def _encode(image: Image.Image, spec: _Target) -> bytes:
     if spec.pil_format == "WEBP":
         options = {"quality": settings.image_quality, "method": 6}
     elif spec.pil_format == "JPEG":
-        options = {"quality": settings.image_quality, "optimize": True, "progressive": True}
+        options = {
+            "quality": settings.image_quality,
+            "optimize": True,
+            "progressive": True,
+        }
     elif spec.pil_format == "PNG":
         options = {"optimize": True}
     # No `exif`/`icc_profile` passed through: metadata is deliberately dropped.

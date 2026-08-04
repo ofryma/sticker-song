@@ -8,9 +8,7 @@ import { useEffect, useRef, useState } from "react";
  * whole archive before repeating, so every name gets its turn.
  */
 export function useCollageCycle({ slotCount, total, paused, stepMs = 2600 }) {
-  const [assigned, setAssigned] = useState(() =>
-    Array.from({ length: slotCount }, (_, i) => i),
-  );
+  const [assigned, setAssigned] = useState(() => Array.from({ length: slotCount }, (_, i) => i));
   // Bumped per slot so each new photograph mounts as a fresh element.
   const [generation, setGeneration] = useState(() => Array(slotCount).fill(0));
   const cursor = useRef(slotCount);

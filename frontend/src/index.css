@@ -25,7 +25,7 @@
     background-attachment: fixed;
   }
 
-:focus-visible {
+  :focus-visible {
     @apply outline-none ring-2 ring-flame/70 ring-offset-2 ring-offset-night;
   }
 
@@ -69,12 +69,7 @@
   /* A hairline that fades out at both ends, like light on stone. */
   .rule-fade {
     @apply h-px w-full border-0;
-    background: linear-gradient(
-      to right,
-      transparent,
-      rgba(226, 217, 200, 0.28),
-      transparent
-    );
+    background: linear-gradient(to right, transparent, rgba(226, 217, 200, 0.28), transparent);
   }
 
   .card-stone {

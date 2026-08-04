@@ -43,9 +43,12 @@ def _pixels(entry: MemorialEntryRead | MemorialEntry) -> int:
 
 
 async def _count_votes(session: AsyncSession, entry_id: uuid.UUID) -> int:
-    return await session.scalar(
-        select(func.count(ImageFeedback.id)).where(ImageFeedback.entry_id == entry_id)
-    ) or 0
+    return (
+        await session.scalar(
+            select(func.count(ImageFeedback.id)).where(ImageFeedback.entry_id == entry_id)
+        )
+        or 0
+    )
 
 
 async def find_duplicate_candidates(

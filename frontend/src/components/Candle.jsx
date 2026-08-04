@@ -16,11 +16,7 @@ export function Candle({ size = 48, lit = true, className = "" }) {
         />
       )}
 
-      <svg
-        viewBox="0 0 24 40"
-        className="relative h-full w-full overflow-visible"
-        fill="none"
-      >
+      <svg viewBox="0 0 24 40" className="relative h-full w-full overflow-visible" fill="none">
         {/* Glass holder */}
         <path
           d="M6 15h12v21a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"

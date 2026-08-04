@@ -61,7 +61,5 @@ def download_image(object_key: str) -> tuple[bytes, str]:
         response.close()
         response.release_conn()
     if not content_type or content_type == "application/octet-stream":
-        content_type = (
-            mimetypes.guess_type(object_key)[0] or "application/octet-stream"
-        )
+        content_type = mimetypes.guess_type(object_key)[0] or "application/octet-stream"
     return data, content_type

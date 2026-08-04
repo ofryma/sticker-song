@@ -8,9 +8,9 @@ import sys
 import time
 from urllib.parse import urlsplit
 
-from alembic import command
 from alembic.config import Config
 
+from alembic import command
 from app import storage
 from app.config import settings
 

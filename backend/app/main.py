@@ -27,9 +27,7 @@ async def warn_about_admin_token() -> None:
     if not settings.admin_token:
         logger.warning("ADMIN_TOKEN is not set: /admin endpoints are disabled")
     elif settings.admin_token == "devtoken":
-        logger.warning(
-            "ADMIN_TOKEN is still the development default: never deploy this"
-        )
+        logger.warning("ADMIN_TOKEN is still the development default: never deploy this")
 
 
 @app.get("/health", tags=["meta"])

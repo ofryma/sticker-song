@@ -43,7 +43,9 @@ export default function Wall() {
 
       {status === "ready" && entries.length === 0 && <EmptyWall />}
 
-      {ready && !listed && <Collage entries={entries} onOpen={(entry) => setSelectedId(entry.id)} />}
+      {ready && !listed && (
+        <Collage entries={entries} onOpen={(entry) => setSelectedId(entry.id)} />
+      )}
 
       {ready &&
         listed &&

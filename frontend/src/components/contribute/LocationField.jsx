@@ -34,22 +34,31 @@ export function LocationField({ latitude, longitude, onChange }) {
         className="animate-fade border border-night-line/80 bg-night-soft/70"
       >
         <CardBody className="flex flex-row flex-wrap items-center gap-4 px-5 py-4">
-        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-flame/80" fill="none" aria-hidden="true">
-          <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" stroke="currentColor" strokeWidth="1.3" />
-          <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.3" />
-        </svg>
-        <div className="min-w-0">
-          <p className="text-sm text-stone-200">{t("contribute.locationSet")}</p>
-          <p className="mt-0.5 font-mono text-xs text-stone-500">{coords}</p>
-        </div>
-        <Action
-          tone="quiet"
-          size="sm"
-          className="ms-auto text-xs"
-          onPress={() => onChange({ latitude: null, longitude: null })}
-        >
-          {t("contribute.locationClear")}
-        </Action>
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4 shrink-0 text-flame/80"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.3" />
+          </svg>
+          <div className="min-w-0">
+            <p className="text-sm text-stone-200">{t("contribute.locationSet")}</p>
+            <p className="mt-0.5 font-mono text-xs text-stone-500">{coords}</p>
+          </div>
+          <Action
+            tone="quiet"
+            size="sm"
+            className="ms-auto text-xs"
+            onPress={() => onChange({ latitude: null, longitude: null })}
+          >
+            {t("contribute.locationClear")}
+          </Action>
         </CardBody>
       </Card>
     );

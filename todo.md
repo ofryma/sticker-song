@@ -12,17 +12,17 @@
 
 ## Project
 
-* Contribution markdown (`CONTRIBUTING.md`)
-* `LICENSE` — decide and add one
-* `uv.lock` is in `.gitignore`, so backend image builds are not reproducible.
-  Commit it and add `uv sync --frozen` to the Dockerfile
-* No tests exist anywhere. At minimum: backend tests for name normalization,
-  image conversion (HEIC/EXIF/animated), duplicate matching, blacklist and the
-  vote-deletion path
-* CI only builds images. Add a job that runs the tests, plus ruff for the
-  backend and eslint/prettier for the frontend
-* Check the 300-line frontend rule and the i18n dictionaries for missing English
-  keys before shipping (`find frontend/src -type f | xargs wc -l | sort -n`)
+* AGPL section 13 obliges a network service to offer its source to its users.
+  Add a "Source" link in the footer pointing at the repository
+* Three `react-hooks` v7 rules are warnings in `eslint.config.js` because they
+  flag pre-existing code. Fix and promote each back to `error`:
+  * `useCollageCycle.js` — `setState` called synchronously in two effects
+    (slot-count reset, and the media-query listener)
+  * `useStickerDraft.js` — `previewUrl.current` read during render
+* No frontend tests. The rule checks and eslint cover structure, nothing covers
+  behaviour — the draft flow and duplicate review are the parts worth testing
+* Backend integration tests fake MinIO in-process. Nothing exercises the real
+  client, so a `storage.py` regression would ship green
 
 ## Blockers — do not deploy without these
 
