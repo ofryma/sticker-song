@@ -41,12 +41,19 @@ export default [
       // enough to catch a real violation also flags Hero and Candle. That one
       // stays a review question.
       //
-      // react-hooks 7 added rules that flag pre-existing code (see todo.md).
-      // They are warnings so CI is green on the current tree, not because the
-      // findings are wrong — turn them back to "error" as each is fixed.
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/refs": "warn",
+      // react-hooks 7 rules. Both were warnings while useCollageCycle reset
+      // state from an effect and useStickerDraft read a ref during render; both
+      // are fixed, so they are errors again and must stay that way.
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/refs": "error",
     },
+  },
+
+  {
+    // Tests and their helpers export fixtures and helpers rather than
+    // components, which is exactly what fast refresh objects to.
+    files: ["src/**/*.test.{js,jsx}", "src/test/**/*.{js,jsx}"],
+    rules: { "react-refresh/only-export-components": "off" },
   },
 
   {

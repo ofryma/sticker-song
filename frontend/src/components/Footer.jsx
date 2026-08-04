@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { useI18n } from "../i18n/index.jsx";
 
+// The archive is AGPL-3.0, and section 13 obliges a network service to offer
+// its source to the people using it. This link is that offer.
+export const SOURCE_URL = "https://github.com/ofryma/sticker-song";
+
 export function Footer() {
   const { t } = useI18n();
 
@@ -20,6 +24,14 @@ export function Footer() {
           <Link to="/about" className="transition-colors duration-700 hover:text-ink">
             {t("nav.about")}
           </Link>
+          <a
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors duration-700 hover:text-ink"
+          >
+            {t("footer.source")}
+          </a>
         </nav>
       </div>
     </footer>

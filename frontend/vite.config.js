@@ -16,4 +16,12 @@ export default defineConfig({
       },
     },
   },
+  // Behaviour tests: the draft flow and the duplicate review. Tailwind never
+  // runs here, so nothing in a test may depend on a computed style.
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.js"],
+    include: ["src/**/*.test.{js,jsx}"],
+    restoreMocks: true,
+  },
 });

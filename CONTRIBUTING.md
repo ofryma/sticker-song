@@ -44,6 +44,7 @@ uv run pytest
 # frontend
 cd frontend
 npm run check          # eslint + prettier + the repo-specific rules
+npm run test           # vitest
 npm run build
 ```
 
@@ -79,8 +80,37 @@ with 44 skips has not tested duplicate matching. Bring Postgres up with
 `docker compose up postgres` to run them for real. CI sets `REQUIRE_DATABASE=1`,
 which turns that skip into a failure.
 
-MinIO is faked in-process (`FakeStorage` in `tests/conftest.py`) — the tests
-assert on which objects were written and deleted, so no bucket is needed.
+For the route tests MinIO is faked in-process (`FakeStorage` in
+`tests/conftest.py`) — they assert on which objects were written and deleted, so
+no bucket is needed. `tests/test_storage.py` is the exception: it drives the real
+MinIO client, because a fake bucket would never catch a regression in
+`app/storage.py` itself. It points at `TEST_MINIO_ENDPOINT`, defaulting to the
+port `docker compose` publishes:
+
+```
+localhost:9010
+```
+
+Each test gets a throwaway bucket and removes it afterwards. Same deal as
+Postgres: it skips when nothing is listening, `docker compose up minio` runs it
+for real, and CI sets `REQUIRE_STORAGE=1` to turn the skip into a failure.
+
+### Frontend tests
+
+```bash
+cd frontend
+npm run test           # vitest, once
+npm run test:watch     # while working
+```
+
+Vitest and Testing Library, in jsdom, covering the two flows where a mistake
+costs something: the draft wizard (`src/pages/Contribute.test.jsx`,
+`src/hooks/useStickerDraft.test.js`) and the duplicate review
+(`src/components/contribute/DuplicateReview.test.jsx`). Tailwind never runs in a
+test, so nothing may assert on a computed style; assert on what a visitor can
+read and press. Strings come from `src/i18n/en.js` through the `text()` helper in
+`src/test/render.jsx` rather than being duplicated in the test. `make test` runs
+them alongside the backend suite, and so does CI.
 
 ### What deserves a test
 
@@ -130,7 +160,7 @@ version:
   `prefers-reduced-motion`.
 - **Copy is plain and warm, never gamified.** No exclamation marks, no emoji, no
   counts framed as achievements. A submission is acknowledged with thanks.
-- **Bilingual.** Every user-facing string goes in `src/i18n/he.js` *and*
+- **Bilingual.** Every user-facing string goes in `src/i18n/he.js` _and_
   `src/i18n/en.js` — `npm run check:rules` fails if the two drift apart. Hebrew
   is the default and the document direction flips, so use logical properties
   (`ps-*`, `pe-*`, `ms-*`, `me-*`, `text-start`) and never `pl-*`/`left-*` for
@@ -138,8 +168,11 @@ version:
 - **Accessible.** Keyboard reachable, visible focus rings, labelled inputs, `alt`
   on every image, modals trap focus and close on Escape.
 
-`eslint.config.js` carries a few rules as warnings rather than errors where they
-flag pre-existing code; `todo.md` tracks those. Do not add new warnings.
+`eslint.config.js` treats `react-hooks/set-state-in-effect` and
+`react-hooks/refs` as errors. Both were warnings while older hooks tripped them;
+they are fixed, so derive state during render or from the source of truth rather
+than syncing it in an effect, and never read a ref while rendering. Do not demote
+a rule to get a branch green.
 
 ## Commits and pull requests
 

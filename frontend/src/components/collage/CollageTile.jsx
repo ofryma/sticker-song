@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { imageUrl } from "../../lib/api.js";
+import { thumbUrl } from "../../lib/api.js";
 import { useI18n } from "../../i18n/index.jsx";
 import { slotStyle } from "./layout.js";
 
@@ -31,7 +31,7 @@ export function CollageTile({ slot, entry, generation, onOpen, still }) {
               than a name written across someone's face. */}
           <span className="bg-day-warm block aspect-4/5 overflow-hidden rounded-[1px]">
             <img
-              src={imageUrl(entry)}
+              src={thumbUrl(entry)}
               alt={t("entry.photo", { name: entry.person_name })}
               loading="lazy"
               decoding="async"

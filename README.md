@@ -48,6 +48,7 @@ to `.env` to change ports or credentials.
 | Service        | URL                                            |
 | -------------- | ---------------------------------------------- |
 | Frontend       | <http://localhost:5173>                        |
+| Review page    | <http://localhost:5173/admin> (admin/admin)    |
 | API + docs     | <http://localhost:8000/docs>                   |
 | MinIO console  | <http://localhost:9011> (minioadmin/minioadmin) |
 | Postgres       | `localhost:5442`                               |
@@ -71,13 +72,24 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 
 | Method | Path                   | Notes                                          |
 | ------ | ---------------------- | ---------------------------------------------- |
-| POST   | `/entries`             | `multipart/form-data`: `image`, `person_name`, `sticker_text`, optional `latitude`/`longitude` |
-| GET    | `/entries`             | Newest first; `limit` (≤200) and `offset`       |
-| GET    | `/entries/{id}`        | Single entry                                   |
-| GET    | `/entries/{id}/image`  | Streams the image out of MinIO                 |
+| POST   | `/entries`             | `multipart/form-data`: `image`, `person_name`, `sticker_text`, optional `latitude`/`longitude`. Creates a **draft** |
+| GET    | `/entries`             | The wall: published only, newest first; `limit` (≤200) and `offset` |
+| GET    | `/entries/{id}`        | Single published entry                         |
+| GET    | `/entries/{id}/image`  | The full-size image out of MinIO               |
+| GET    | `/entries/{id}/thumb`  | The small copy, for grids and the collage      |
 | GET    | `/entries/{id}/duplicates` | Possible duplicates of an existing entry   |
 | POST   | `/entries/{id}/feedback`   | Vote "this is the best image for this person" |
 | GET    | `/health`              | Liveness                                       |
+| POST   | `/admin/login`         | `{username, password}` → a short-lived session token |
+| GET    | `/admin/session`       | Whether the caller's credential is still valid |
+| GET    | `/admin/entries`       | The review queue; `status` = `pending` (default) / `published` / `rejected` / `all` |
+| GET    | `/admin/entries/counts`| How many entries sit in each state             |
+| POST   | `/admin/entries/{id}/publish` | Put the entry on the wall; optional `{note}` |
+| POST   | `/admin/entries/{id}/reject`  | Keep it out of the archive without deleting it |
+| POST   | `/admin/entries/{id}/analyze` | Re-run the LLM read on the entry        |
+| DELETE | `/admin/entries/{id}`  | Permanent takedown: row and both images, no undo |
+| GET    | `/admin/entries/{id}/image` | A draft's photo, whatever its state       |
+| GET    | `/admin/entries/{id}/thumb` | The same, small                           |
 | POST   | `/admin/blacklist`     | `{ip, reason}` — bar an IP from submitting     |
 | GET    | `/admin/blacklist`     | List blocked IPs and reasons                   |
 | DELETE | `/admin/blacklist/{ip}`| Unban                                          |
@@ -93,8 +105,12 @@ from iPhones) is re-encoded into the single format set by `IMAGE_FORMAT`
 extension. Along the way EXIF orientation is applied and all metadata — GPS
 included — is dropped; animated input keeps its first frame. Anything that
 cannot be decoded is a 400, and the stored width/height/bytes describe the
-converted image. Contributors need no authentication;
-the `/admin` routes require an `X-Admin-Token` header.
+converted image. Every upload also gets a thumbnail (longest edge
+`THUMBNAIL_MAX_EDGE`, 640 by default) in the same format, which is what the wall
+grid and the collage load. Contributors need no authentication; the `/admin`
+routes take either an `X-Admin-Token` header or a session token from
+`/admin/login` (as `Authorization: Bearer`, or a `?token=` query parameter for
+`<img>` URLs).
 
 Example:
 
@@ -106,13 +122,60 @@ curl -X POST localhost:8000/entries \
   -F "latitude=32.0853" -F "longitude=34.7818"
 ```
 
+## Review before publication
+
+**Every submission is a draft.** `POST /entries` stores the entry with
+`status: "pending"` and returns `awaiting_review: true`; it is not on the wall, not
+in `GET /entries`, not offered as a duplicate candidate, and not votable. A person
+publishes it from the review page at `/admin`. That way nothing offensive or
+half-finished is ever public, even briefly.
+
+A draft is readable by exactly two parties: an admin, and the IP that submitted it —
+so the contributor still sees their own entry on the thank-you screen. Everyone else
+gets a 404, because a draft's existence is not public either. Setting
+`REQUIRE_REVIEW=false` publishes on upload instead, which the project deliberately
+avoids.
+
+**The review page.** `/admin` is a normal route in the SPA, linked from nowhere. It
+signs in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` and holds a token that expires
+after `ADMIN_SESSION_HOURS`; the token is an HMAC over its own expiry keyed by the
+password, so nothing is stored server-side and changing the password invalidates
+every issued token. The page shows each draft's photograph, name and transcription,
+and offers four actions: publish, hold back (`rejected` — kept, so a resubmission is
+not silently re-reviewed), re-read with the LLM, and delete permanently.
+
+**The LLM's opinion is advisory.** With `ANTHROPIC_API_KEY` set, each new draft is
+read by `REVIEW_MODEL` (`app/review.py`) after the upload response has already gone
+out. It returns a structured `ok` / `flag` plus one sentence, stored on the entry as
+a note for the reviewer. It never publishes or rejects anything: the archive is
+about real people, and a classifier is not the right thing to have the last word on
+whose name is remembered. It is prompted to flag slurs, attacks, spam, placeholder
+names and empty transcriptions — and explicitly *not* to flag Hebrew or Arabic,
+religious language, verses, units, nicknames, or a sticker's own words about how
+somebody died. With no key the check is skipped and the draft simply waits.
+
+## Seeding the wall
+
+An empty archive on day one reads as abandoned. `app/seed.py` loads real entries
+from a manifest and writes them in as already published:
+
+```bash
+make seed m=seed/entries.json     # or: uv run python -m app.seed seed/entries.json
+```
+
+The manifest is a JSON list of `{image, person_name, sticker_text}` plus optional
+`latitude`/`longitude`, where `image` is a path relative to the manifest itself; see
+`backend/seed/entries.example.json`. Re-running is safe — an entry whose normalized
+name and image dimensions already match a row is skipped.
+
 ## Moderation and duplicates
 
 **IP blacklist.** `POST /entries` and `POST /entries/{id}/feedback` refuse
 blacklisted IPs with `403` and the stored reason. Reads stay open. Manage the list
-through `/admin/blacklist` with the `X-Admin-Token` header, matched against
-`ADMIN_TOKEN`. An unset `ADMIN_TOKEN` disables `/admin` entirely (`503`); the
-backend logs a warning while it is still the dev default `devtoken`.
+through `/admin/blacklist` with either admin credential. With neither `ADMIN_TOKEN`
+nor `ADMIN_USERNAME`/`ADMIN_PASSWORD` set, `/admin` is disabled entirely (`503`) and
+nothing can be published; the backend logs a warning while `ADMIN_TOKEN` is still
+the dev default `devtoken`.
 
 **Duplicate detection.** Names are stored twice: as typed, and normalized
 (NFKC-folded, lowercased, whitespace-collapsed) as the grouping key. Submitting an
@@ -140,11 +203,13 @@ identity is also coarse: NAT shares one address between many people.
 
 ## Schema
 
-`memorial_entries`: `id` (UUID PK), `person_name`, `person_name_normalized`,
-`sticker_text`, `latitude` (nullable), `longitude` (nullable), `image_object_key`,
+`memorial_entries`: `id` (UUID PK), `status` (`pending`/`published`/`rejected`),
+`person_name`, `person_name_normalized`, `sticker_text`, `latitude` (nullable),
+`longitude` (nullable), `image_object_key`, `thumb_object_key` (nullable),
 `image_width`/`image_height`/`image_bytes` (nullable), `submitter_ip` (nullable),
-`created_at`, `updated_at`. Indexed on `created_at`, plus btree and GIN trigram
-indexes on `person_name_normalized`.
+`review_note`/`reviewed_by`/`reviewed_at` (nullable), `llm_verdict`/`llm_reason`/
+`llm_checked_at` (nullable), `created_at`, `updated_at`. Indexed on `created_at` and
+`status`, plus btree and GIN trigram indexes on `person_name_normalized`.
 
 `blacklisted_ips`: `ip` (PK), `reason`, `created_at`.
 
@@ -165,17 +230,22 @@ backend/
     names.py        person-name normalization (the duplicate grouping key)
     client_ip.py    X-Forwarded-For aware client IP
     blacklist.py    dependency that refuses blacklisted IPs on writes
+    admin_auth.py   admin token + signed session token
+    review.py       the LLM's advisory read on a submission
+    seed.py         `python -m app.seed <manifest>` — publish real entries
     routers/entries.py
-    routers/admin.py   blacklist management, X-Admin-Token guarded
+    routers/admin.py       sign-in and blacklist management
+    routers/moderation.py  the review queue: publish, reject, delete
     init_infra.py   init-db sidecar entrypoint
   alembic/          migration env + versions
+  seed/             seed manifests (see entries.example.json)
 frontend/
   src/App.jsx       routes + layout shell
   src/i18n/         he/en dictionaries, RTL provider
   src/lib/          api client, formatting
-  src/hooks/        reveal, paging, modal, draft flow
-  src/components/   candle, wall grid, entry detail, upload steps
-  src/pages/        Home, Wall, Contribute, About
+  src/hooks/        reveal, paging, modal, draft flow, admin session + queue
+  src/components/   wall grid, entry detail, upload steps, review queue
+  src/pages/        Home, Wall, Contribute, About, Admin, NotFound
 nginx/conf.d/         edge proxy config (production only)
 docker-compose.yml        development
 docker-compose.prod.yml   single-server deployment
@@ -188,7 +258,8 @@ make up        # docker compose up --build
 make down      # stop
 make reset     # stop and wipe database + object storage
 make logs      # tail backend and frontend
-make migration m="add moderation flag"   # autogenerate a migration
+make migration m="add a column"          # autogenerate a migration
+make seed m=seed/entries.json            # publish entries from a manifest
 make test      # backend test suite
 make lint      # ruff + eslint + prettier + the frontend rule checks
 make check     # everything CI checks
@@ -280,7 +351,7 @@ nginx image).
 
 ## Notes and next steps
 
-The MVP deliberately omits authentication, moderation, search, OCR, and maps. The
+The MVP deliberately omits contributor accounts, OCR, and maps. The
 shape is ready for them: add a migration for new columns/tables, and add routers
 under `backend/app/routers/`. Uploads are capped at 10 MB and must decode as an
 image; the bucket is private, which is why images are proxied.

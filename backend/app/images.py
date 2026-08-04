@@ -111,6 +111,36 @@ def _encode(image: Image.Image, spec: _Target) -> bytes:
     return buffer.getvalue()
 
 
+def make_thumbnail(data: bytes) -> NormalizedImage:
+    """A small copy of an already-normalized image, in the same canonical format.
+
+    The wall grid and the collage show dozens of tiles at a few hundred pixels
+    wide; serving the full-size upload to each of them is a heavy mobile payload
+    for pixels nobody sees. Aspect ratio is preserved and an image already inside
+    the box is left at its own size rather than upscaled.
+    """
+    spec = target()
+    try:
+        with Image.open(io.BytesIO(data)) as opened:
+            source_format = opened.format or "UNKNOWN"
+            image = _flatten(opened, spec.supports_alpha)
+            edge = settings.thumbnail_max_edge
+            image.thumbnail((edge, edge), Image.Resampling.LANCZOS)
+            encoded = _encode(image, spec)
+            width, height = image.size
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise UnsupportedImage(str(exc)) from exc
+
+    return NormalizedImage(
+        data=encoded,
+        content_type=spec.content_type,
+        extension=spec.extension,
+        source_format=source_format,
+        width=width,
+        height=height,
+    )
+
+
 def normalize(data: bytes) -> NormalizedImage:
     """Decode any supported image and re-encode it into the canonical format.
 

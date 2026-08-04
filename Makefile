@@ -1,5 +1,5 @@
-.PHONY: up down logs build reset migration backend-shell \
-        test test-backend lint lint-backend lint-frontend check \
+.PHONY: up down logs build reset migration backend-shell seed \
+        test test-backend test-frontend lint lint-backend lint-frontend check \
         prod-pull prod-up prod-down prod-logs
 
 PROD := docker compose -f docker-compose.prod.yml
@@ -25,12 +25,18 @@ migration:                 ## make migration m="add column"
 backend-shell:
 	docker compose exec backend bash
 
+seed:                      ## seed the wall: make seed m=seed/entries.json
+	docker compose run --rm -v $(PWD)/backend/seed:/app/seed init-db python -m app.seed "$(m)"
+
 # --- tests and linters (what CI runs) ----------------------------------------
 
-test: test-backend      ## run the test suite
+test: test-backend test-frontend   ## run both test suites
 
-test-backend:              ## integration tests need `docker compose up postgres`
+test-backend:              ## integration tests need `docker compose up postgres minio`
 	cd backend && uv run pytest
+
+test-frontend:             ## vitest: the draft flow and the duplicate review
+	cd frontend && npm run test
 
 lint: lint-backend lint-frontend
 

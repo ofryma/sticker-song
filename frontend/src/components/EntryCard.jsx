@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { imageUrl } from "../lib/api.js";
+import { thumbUrl } from "../lib/api.js";
 import { formatDate } from "../lib/format.js";
 import { useI18n } from "../i18n/index.jsx";
 
@@ -23,7 +23,7 @@ export function EntryCard({ entry, index = 0, onOpen }) {
     >
       <div className="bg-day-warm relative aspect-[4/5] overflow-hidden">
         <img
-          src={imageUrl(entry)}
+          src={thumbUrl(entry)}
           alt={t("entry.photo", { name: entry.person_name })}
           loading="lazy"
           decoding="async"

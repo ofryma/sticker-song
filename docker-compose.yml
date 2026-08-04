@@ -44,6 +44,15 @@ services:
       MINIO_SECURE: "false"
       # Dev-only default; the backend logs a warning while it is still 'devtoken'.
       ADMIN_TOKEN: ${ADMIN_TOKEN:-devtoken}
+      # Sign-in for the /admin review page. Dev-only defaults.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      # Every submission waits for review before it reaches the wall.
+      REQUIRE_REVIEW: ${REQUIRE_REVIEW:-true}
+      # Optional: an LLM note on each draft for the reviewer. Unset = skipped.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      REVIEW_MODEL: ${REVIEW_MODEL:-claude-opus-5}
+      THUMBNAIL_MAX_EDGE: ${THUMBNAIL_MAX_EDGE:-640}
       DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-3}
       NAME_SIMILARITY_THRESHOLD: ${NAME_SIMILARITY_THRESHOLD:-0.4}
       IMAGE_FORMAT: ${IMAGE_FORMAT:-webp}

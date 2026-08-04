@@ -19,11 +19,31 @@ class Base(DeclarativeBase):
     pass
 
 
+#: A submission is a draft until a human publishes it. Nothing reaches the wall
+#: without passing through `published`, and `rejected` is kept rather than deleted
+#: so the same entry is not re-reviewed after a resubmission.
+ENTRY_STATUSES = ("pending", "published", "rejected")
+
+
 class MemorialEntry(Base):
     __tablename__ = "memorial_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    # Filled in when a reviewer acts: who decided, when, and why.
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # The LLM's read on the submitted text: "ok" | "flag" | "error". Advisory only —
+    # it never publishes or rejects on its own.
+    llm_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    llm_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     person_name: Mapped[str] = mapped_column(String(255))
     # Normalized form of person_name; the grouping key for duplicate detection.
@@ -32,6 +52,9 @@ class MemorialEntry(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     image_object_key: Mapped[str] = mapped_column(String(512))
+    # Small copy of the same photo, for the wall grid and the collage. Nullable:
+    # entries written before thumbnails existed fall back to the full image.
+    thumb_object_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     image_width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     image_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     image_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)

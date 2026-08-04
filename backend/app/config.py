@@ -27,6 +27,26 @@ class Settings(BaseSettings):
 
     # Admin API. Empty means the admin endpoints are disabled entirely.
     admin_token: str = ""
+    # Credentials for the admin management page. Both must be set for /admin/login
+    # to work; the token above stays valid for scripts and curl.
+    admin_username: str = ""
+    admin_password: str = ""
+    # How long a signed admin session token stays valid.
+    admin_session_hours: int = Field(default=12, ge=1, le=168)
+
+    # Every submission lands as a draft and is published only after review.
+    # Turning this off publishes on upload, which the project deliberately avoids.
+    require_review: bool = True
+
+    # LLM review of the submitted name and sticker text. Empty key = skipped, and
+    # the entry simply waits for a human.
+    anthropic_api_key: str = ""
+    review_model: str = "claude-opus-5"
+    # Longest edge of the thumbnail served to the wall grid and the collage.
+    thumbnail_max_edge: int = Field(default=640, ge=64, le=2048)
+    # Cache-Control max-age for images. Keys are content-addressed, so an entry's
+    # bytes never change under the same URL.
+    image_cache_seconds: int = 60 * 60 * 24 * 365
 
     # Votes an image needs before it wins its duplicate group.
     duplicate_vote_threshold: int = 3
@@ -35,6 +55,15 @@ class Settings(BaseSettings):
 
     # Honour X-Forwarded-For. Safe behind a trusted proxy only; see README.
     trust_proxy_headers: bool = True
+
+    @property
+    def review_enabled(self) -> bool:
+        """Whether an LLM opinion is available at all."""
+        return bool(self.anthropic_api_key)
+
+    @property
+    def admin_login_enabled(self) -> bool:
+        return bool(self.admin_username and self.admin_password)
 
 
 @lru_cache

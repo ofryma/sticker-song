@@ -25,6 +25,11 @@ export function useStickerDraft() {
   // What the backend suspects is the same person, returned with the new entry.
   const [duplicates, setDuplicates] = useState([]);
   const [suggestedBestId, setSuggestedBestId] = useState(null);
+  // True when the entry is kept as a draft, waiting for a reviewer.
+  const [awaitingReview, setAwaitingReview] = useState(false);
+  // The object URL is state because the render reads it; the ref is only so the
+  // unmount cleanup can revoke whatever URL is live at that moment.
+  const [preview, setPreview] = useState(null);
   const previewUrl = useRef(null);
 
   const step = STEPS[stepIndex];
@@ -39,6 +44,7 @@ export function useStickerDraft() {
   const setImage = useCallback((file) => {
     if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
     previewUrl.current = file ? URL.createObjectURL(file) : null;
+    setPreview(previewUrl.current);
     setDraft((current) => ({ ...current, image: file }));
     setTouched(false);
   }, []);
@@ -68,6 +74,7 @@ export function useStickerDraft() {
       setSaved(result.entry);
       setDuplicates(result.possible_duplicates ?? []);
       setSuggestedBestId(result.suggested_best_id ?? null);
+      setAwaitingReview(Boolean(result.awaiting_review));
       setState("done");
     } catch (cause) {
       setError(cause);
@@ -84,6 +91,7 @@ export function useStickerDraft() {
     setSaved(null);
     setDuplicates([]);
     setSuggestedBestId(null);
+    setAwaitingReview(false);
   }, [setImage]);
 
   return {
@@ -92,7 +100,7 @@ export function useStickerDraft() {
     stepIndex,
     total: STEPS.length,
     isLast: stepIndex === STEPS.length - 1,
-    preview: previewUrl.current,
+    preview,
     blocker: touched ? blocker : null,
     canAdvance: !blocker,
     state,
@@ -100,6 +108,7 @@ export function useStickerDraft() {
     saved,
     duplicates,
     suggestedBestId,
+    awaitingReview,
     set,
     setImage,
     next,

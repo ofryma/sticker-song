@@ -20,6 +20,7 @@ export default function Contribute() {
       <Page className="max-w-2xl pb-16">
         <Thanks
           entry={form.saved}
+          awaitingReview={form.awaitingReview}
           onView={() => setShowSaved(true)}
           onAnother={() => {
             setShowSaved(false);
@@ -27,8 +28,9 @@ export default function Contribute() {
             form.reset();
           }}
         />
-        {/* Only asked when the archive may already hold this person. */}
-        {form.duplicates.length > 0 && !dismissedDuplicates && (
+        {/* Only asked when the archive already holds this person and the new entry
+            is public — a draft has nothing to be compared against yet. */}
+        {form.duplicates.length > 0 && !form.awaitingReview && !dismissedDuplicates && (
           <DuplicateReview
             entry={form.saved}
             duplicates={form.duplicates}

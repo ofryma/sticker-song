@@ -11,6 +11,9 @@ import Home from "./pages/Home.jsx";
 const Wall = lazy(() => import("./pages/Wall.jsx"));
 const Contribute = lazy(() => import("./pages/Contribute.jsx"));
 const About = lazy(() => import("./pages/About.jsx"));
+const NotFound = lazy(() => import("./pages/NotFound.jsx"));
+// The review queue: not linked from anywhere, and no visitor downloads it.
+const Admin = lazy(() => import("./pages/Admin.jsx"));
 
 /** Every navigation starts at the top of the page, without a smooth scroll. */
 function ScrollToTop() {
@@ -43,7 +46,8 @@ export default function App() {
             <Route path="/wall" element={<Wall />} />
             <Route path="/contribute" element={<Contribute />} />
             <Route path="/about" element={<About />} />
-            <Route path="*" element={<Home />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </main>

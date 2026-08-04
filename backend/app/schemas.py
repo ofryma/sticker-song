@@ -25,6 +25,48 @@ class MemorialEntryRead(BaseModel):
         """Path the frontend can use directly in an <img> tag."""
         return f"/entries/{self.id}/image"
 
+    @computed_field
+    @property
+    def thumb_url(self) -> str:
+        """Small copy, for grids and the collage. Falls back to the full image
+        server-side when an older entry has no thumbnail."""
+        return f"/entries/{self.id}/thumb"
+
+
+class MemorialEntryReview(MemorialEntryRead):
+    """An entry as a reviewer sees it: the draft state and the LLM's opinion."""
+
+    status: str
+    review_note: str | None
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+    llm_verdict: str | None
+    llm_reason: str | None
+    llm_checked_at: datetime | None
+    submitter_ip: str | None
+
+
+class ReviewCounts(BaseModel):
+    pending: int
+    published: int
+    rejected: int
+
+
+class ReviewDecision(BaseModel):
+    """Why a reviewer published or rejected. Optional, and kept on the entry."""
+
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class AdminLogin(BaseModel):
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class AdminSession(BaseModel):
+    token: str
+    expires_at: datetime
+
 
 class DuplicateCandidate(MemorialEntryRead):
     vote_count: int
@@ -38,6 +80,8 @@ class EntryCreateResponse(BaseModel):
     possible_duplicates: list[DuplicateCandidate]
     # Highest-resolution image among the new entry and its candidates.
     suggested_best_id: uuid.UUID
+    # True while the entry is a draft: kept, but not yet on the wall.
+    awaiting_review: bool
 
 
 class DuplicateListResponse(BaseModel):

@@ -8,6 +8,7 @@ exact normalized-name matches only — and, just as importantly, what does not.
 import pytest
 from sqlalchemy import func, select
 
+from app import storage as storage_module
 from app.config import settings
 from app.models import ImageFeedback, MemorialEntry
 from tests.test_duplicates import submit
@@ -95,8 +96,11 @@ async def test_reaching_the_threshold_deletes_the_exact_duplicate(
     # The row is gone...
     assert await session.get(MemorialEntry, loser["id"]) is None
     assert await count_entries(session) == 1
-    # ...and so is the image.
-    assert storage.deleted == [loser["image_object_key"]]
+    # ...and so are both of its objects: the image and its thumbnail.
+    loser_key = loser["image_object_key"]
+    assert sorted(storage.deleted) == sorted(
+        [loser_key, storage_module.build_thumb_key(loser_key)]
+    )
     assert loser["image_object_key"] not in storage.objects
     # The winner is untouched.
     assert winner["image_object_key"] in storage.objects
@@ -156,7 +160,9 @@ async def test_every_exact_duplicate_goes_at_once(client, session, storage) -> N
 
     assert sorted(body["deleted_entry_ids"]) == sorted(x["id"] for x in losers)
     assert await count_entries(session) == 1
-    assert sorted(storage.deleted) == sorted(x["image_object_key"] for x in losers)
+    expected = [x["image_object_key"] for x in losers]
+    expected += [storage_module.build_thumb_key(key) for key in expected]
+    assert sorted(storage.deleted) == sorted(expected)
 
 
 async def test_the_losers_feedback_rows_cascade(client, session) -> None:

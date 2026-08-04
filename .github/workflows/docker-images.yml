@@ -33,6 +33,9 @@ jobs:
       # The integration tests create this database themselves and install
       # pg_trgm into it; they skip if it is unreachable, so the URL has to work.
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/stickers_test
+      # tests/test_storage.py drives the real MinIO client; same deal, it skips
+      # when nothing is listening, so the endpoint has to work.
+      TEST_MINIO_ENDPOINT: localhost:9010
     defaults:
       run:
         working-directory: ./backend
@@ -51,6 +54,21 @@ jobs:
         # image and the tests disagree about what is installed.
         run: uv sync --locked
 
+      # Not a service container: MinIO needs `server /data` as its command, and
+      # `services:` cannot set one. Same image and ports as docker-compose.yml.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9010:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2024-12-18T13-15-44Z server /data
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:9010/minio/health/live && exit 0
+            sleep 2
+          done
+          echo "MinIO did not come up" >&2
+          docker logs minio >&2
+          exit 1
+
       - name: Ruff lint
         run: uv run ruff check --output-format=github .
 
@@ -58,10 +76,11 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Pytest
-        # REQUIRE_DATABASE turns the integration tests' self-skip into a
-        # failure: on CI an unreachable Postgres is a broken job, not a pass.
+        # These turn the integration tests' self-skip into a failure: on CI an
+        # unreachable Postgres or MinIO is a broken job, not a pass.
         env:
           REQUIRE_DATABASE: "1"
+          REQUIRE_STORAGE: "1"
         run: uv run pytest -v --strict-markers
 
   frontend:
@@ -89,6 +108,9 @@ jobs:
 
       - name: Frontend rules (300-line limit, he/en key parity)
         run: npm run check:rules
+
+      - name: Vitest (draft flow, duplicate review)
+        run: npm run test
 
       - name: Build
         run: npm run build

@@ -97,6 +97,36 @@ async def session(db_engine) -> AsyncIterator:
         yield session
 
 
+@pytest.fixture(autouse=True)
+def publish_on_upload(monkeypatch) -> None:
+    """Most tests are about duplicates, votes and images — behaviour that only
+    applies to published entries. They upload and then read back, so the draft step
+    is turned off for them; `test_review.py` turns it on where it is the subject.
+    """
+    from app.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "require_review", False)
+
+
+@pytest.fixture
+def review_required(monkeypatch) -> None:
+    """Restore the production default: every submission lands as a draft."""
+    from app.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "require_review", True)
+
+
+@pytest.fixture
+def admin_credentials(monkeypatch) -> dict[str, str]:
+    """Configure admin sign-in and hand back the credentials."""
+    from app.config import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "admin_username", "reviewer")
+    monkeypatch.setattr(app_settings, "admin_password", "correct-horse")
+    monkeypatch.setattr(app_settings, "admin_token", "test-admin-token")
+    return {"username": "reviewer", "password": "correct-horse"}
+
+
 class FakeStorage:
     """In-memory stand-in for MinIO, recording what the routes did to it."""
 
@@ -127,13 +157,16 @@ def storage(monkeypatch) -> FakeStorage:
 
 
 @pytest_asyncio.fixture
-async def client(db_engine, storage: FakeStorage) -> AsyncIterator[AsyncClient]:
+async def client(
+    db_engine, storage: FakeStorage, monkeypatch
+) -> AsyncIterator[AsyncClient]:
     """The real app, wired to the test database and the fake bucket.
 
     Each request gets its own session, exactly as `get_session` does in
     production — the routes commit and then read back, so sharing one session
     with the test body would hide transaction bugs.
     """
+    from app import db as db_module
     from app.db import get_session
 
     factory = async_sessionmaker(db_engine, expire_on_commit=False)
@@ -143,6 +176,9 @@ async def client(db_engine, storage: FakeStorage) -> AsyncIterator[AsyncClient]:
             yield session
 
     app.dependency_overrides[get_session] = override
+    # Background work (the LLM note) opens its own session off db.SessionFactory
+    # rather than the request dependency, so point that at the test database too.
+    monkeypatch.setattr(db_module, "SessionFactory", factory)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         yield http

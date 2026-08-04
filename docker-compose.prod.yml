@@ -52,6 +52,13 @@ services:
       # Same-origin behind nginx, so CORS is only a fallback. JSON list.
       CORS_ORIGINS: '["${PUBLIC_ORIGIN:-http://localhost}"]'
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      # Sign-in for the /admin review page. Without these nobody can publish.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      REQUIRE_REVIEW: ${REQUIRE_REVIEW:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      REVIEW_MODEL: ${REVIEW_MODEL:-claude-opus-5}
+      THUMBNAIL_MAX_EDGE: ${THUMBNAIL_MAX_EDGE:-640}
       DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-3}
       NAME_SIMILARITY_THRESHOLD: ${NAME_SIMILARITY_THRESHOLD:-0.4}
       IMAGE_FORMAT: ${IMAGE_FORMAT:-webp}
