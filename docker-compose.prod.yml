@@ -1,0 +1,101 @@
+# Single-server production stack. Only nginx is published to the host; Postgres,
+# MinIO, the API and the static frontend stay on the internal network.
+#
+#   cp .env.prod.example .env    # then fill in the secrets
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Images are built and pushed by .github/workflows/docker-images.yml. Set
+# IMAGE_TAG to pin a release; the default tracks main.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-stickers}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-stickers}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  init-db:
+    image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/backend:${IMAGE_TAG:-main}
+    command: ["python", "-m", "app.init_infra"]
+    environment: &backend_env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stickers}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stickers}
+      MINIO_SECURE: "false"
+      # Same-origin behind nginx, so CORS is only a fallback. JSON list.
+      CORS_ORIGINS: '["${PUBLIC_ORIGIN:-http://localhost}"]'
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-3}
+      NAME_SIMILARITY_THRESHOLD: ${NAME_SIMILARITY_THRESHOLD:-0.4}
+      IMAGE_FORMAT: ${IMAGE_FORMAT:-webp}
+      IMAGE_QUALITY: ${IMAGE_QUALITY:-88}
+      # Real client IPs arrive as X-Forwarded-For from the nginx edge only.
+      TRUST_PROXY_HEADERS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/backend:${IMAGE_TAG:-main}
+    environment: *backend_env
+    expose:
+      - "8000"
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/frontend:${IMAGE_TAG:-main}
+    expose:
+      - "80"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  certbot_webroot:

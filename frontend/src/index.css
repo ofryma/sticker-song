@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* HeroUI ships its own class names, so Tailwind has to scan its theme output. */
+@source "../node_modules/@heroui/theme/dist/**/*.{js,mjs}";
+@plugin "../hero.js";
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-night text-stone-200 font-sans antialiased;
+    /* Room for the mobile bottom bar, including the home-indicator inset. */
+    @apply pb-[calc(3.75rem+env(safe-area-inset-bottom))] sm:pb-0;
+    /* A faint warmth at the top of the page, as if light falls from above. */
+    background-image: radial-gradient(
+      110% 70% at 50% -12%,
+      rgba(240, 190, 107, 0.07) 0%,
+      rgba(0, 56, 184, 0.06) 38%,
+      transparent 72%
+    );
+    background-attachment: fixed;
+  }
+
+:focus-visible {
+    @apply outline-none ring-2 ring-flame/70 ring-offset-2 ring-offset-night;
+  }
+
+  ::selection {
+    @apply bg-tekhelet/50 text-stone-50;
+  }
+
+  /* Anyone who asks for less motion gets none of it. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Reveal-on-scroll: hidden until the observer adds .is-revealed. */
+  .reveal {
+    @apply translate-y-5 opacity-0;
+    transition:
+      opacity 1400ms var(--ease-memorial),
+      transform 1400ms var(--ease-memorial);
+  }
+
+  .reveal.is-revealed {
+    @apply translate-y-0 opacity-100;
+  }
+
+  /* Small caps label used above section titles. */
+  .eyebrow {
+    @apply text-[0.68rem] tracking-memorial text-flame/70 uppercase;
+  }
+
+  /* A hairline that fades out at both ends, like light on stone. */
+  .rule-fade {
+    @apply h-px w-full border-0;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(226, 217, 200, 0.28),
+      transparent
+    );
+  }
+
+  .card-stone {
+    @apply rounded-sm border border-night-line/80 bg-night-soft/70 backdrop-blur-sm;
+  }
+}

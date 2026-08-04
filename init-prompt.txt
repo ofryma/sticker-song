@@ -1,0 +1,154 @@
+I want to build an MVP for a memorial project.
+
+The goal is to create a simple web application where people can document memorial stickers 
+of fallen individuals that they encounter in public.
+
+Core workflow
+
+A user should be able to:
+
+1. Upload a photo of a memorial sticker.
+2. Enter the person’s name.
+3. Enter the text/content written on the sticker.
+4. Optionally attach the device’s current GPS location where the photo was taken.
+5. Submit the record.
+
+For the MVP, focus only on making this workflow work end-to-end. Do not spend time on advanced UX, authentication, moderation, search, or scalability yet.
+
+⸻
+
+Tech stack
+
+Frontend:
+
+* React
+* Minimal UI (functionality over design)
+
+Backend:
+
+* Python
+* FastAPI
+* SQLAlchemy 2.x ORM (preferred)
+* Pydantic v2
+* Alembic for database migrations
+
+Database:
+
+* PostgreSQL
+
+Object storage:
+
+* MinIO
+* Store uploaded images in a bucket
+* Store only the object key/URL in PostgreSQL
+
+Infrastructure:
+
+* Docker Compose
+* One-command startup (docker compose up)
+* Use uv for Python dependency management
+
+⸻
+
+Docker services
+
+Create a Docker Compose setup containing:
+
+* frontend
+* backend
+* postgres
+* minio
+* init-db (sidecar)
+
+The init-db container should:
+
+* wait until PostgreSQL is healthy
+* execute Alembic migrations
+* create the MinIO bucket if it does not already exist
+* exit successfully
+
+The backend should depend on the successful completion of the initialization container.
+
+⸻
+
+Database schema
+
+Start with a single table:
+
+memorial_entries
+
+Fields:
+
+* id (UUID)
+* person_name
+* sticker_text
+* latitude (nullable)
+* longitude (nullable)
+* image_object_key
+* created_at
+* updated_at
+
+Keep the schema intentionally small.
+
+⸻
+
+API
+
+Implement a minimal REST API:
+
+* POST /entries
+    * accepts multipart/form-data
+    * image upload
+    * person name
+    * sticker text
+    * optional latitude/longitude
+* GET /entries
+    * list all memorial entries
+* GET /entries/{id}
+    * retrieve a single entry
+
+No authentication is needed for the MVP.
+
+⸻
+
+Frontend
+
+Create a minimal React application with:
+
+* upload image field
+* person name input
+* sticker text textarea
+* button to capture current browser geolocation (optional)
+* submit button
+* simple page listing all uploaded entries
+
+Do not spend time on styling.
+
+⸻
+
+Project structure
+
+Organize the repository cleanly with separate frontend and backend directories.
+
+Include:
+
+* Dockerfiles
+* docker-compose.yml
+* Alembic configuration
+* environment variables
+* .env.example
+* Makefile (optional but preferred)
+* README with setup instructions
+
+⸻
+
+Development principles
+
+* Keep everything as simple as possible.
+* Prefer readable code over abstraction.
+* Avoid overengineering.
+* Follow modern FastAPI and SQLAlchemy 2.x best practices.
+* Use type hints throughout.
+* Make the project easy to extend later with authentication, moderation, OCR, search, and maps.
+
+The primary objective is to have a fully working MVP that can be started with a single docker compose up command and allows users to upload memorial stickers end-to-end.

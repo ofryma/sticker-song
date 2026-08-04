@@ -1,0 +1,127 @@
+/* Design tokens for The Sticker Song. Night-vigil palette: Jerusalem stone and
+   parchment lit against a deep blue dark, with a single warm candle accent. */
+@theme {
+  /* ── Type ────────────────────────────────────────────────────────────────
+     Suez One: an Israeli display serif with real weight, for titles.
+     David Libre: the Hebrew book serif — names and sticker text.
+     Assistant: a quiet, exceptionally legible Hebrew/Latin sans for chrome. */
+  --font-display: "Suez One", Georgia, serif;
+  --font-serif: "David Libre", Georgia, serif;
+  --font-sans: "Assistant", ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Night — the page rests in darkness, like a room lit by one candle. */
+  --color-night: #0a0f1c;
+  --color-night-soft: #111829;
+  --color-night-raised: #18202f;
+  --color-night-line: #252e40;
+
+  /* ── Tekhelet — the blue of the flag and of the tallit. */
+  --color-tekhelet: #0038b8;
+  --color-tekhelet-light: #5b8de0;
+  --color-tekhelet-pale: #a9c4ee;
+  --color-tekhelet-deep: #062a73;
+
+  /* ── Stone — Jerusalem limestone, the color of the walls stickers live on. */
+  --color-stone-50: #fbf8f2;
+  --color-stone-100: #f2ede3;
+  --color-stone-200: #e2d9c8;
+  --color-stone-300: #c8bca6;
+  --color-stone-400: #a2957d;
+  --color-stone-500: #7c7160;
+
+  /* ── Flame — the yahrzeit candle. Sparingly, never for decoration. */
+  --color-flame: #f0be6b;
+  --color-flame-warm: #e39b4a;
+  --color-flame-glow: #ffe9be;
+
+  --tracking-memorial: 0.22em;
+
+  /* Long tail, no overshoot. Everything decelerates into place. */
+  --ease-memorial: cubic-bezier(0.16, 0.8, 0.24, 1);
+
+  /* ── Motion. Nothing bounces, springs, or pops. */
+  --animate-rise: rise 1200ms var(--ease-memorial) both;
+  --animate-fade: fade 1800ms ease-out both;
+  --animate-fade-slow: fade 2400ms ease-out both;
+  --animate-sheet: sheet 900ms var(--ease-memorial) both;
+  --animate-flicker: flicker 4.2s ease-in-out infinite;
+  --animate-halo: halo 5.5s ease-in-out infinite;
+  --animate-drift: drift 46s ease-in-out infinite;
+
+  /* Content arrives by rising a few pixels out of the dark. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* The mobile detail view rises from the bottom edge like a drawn curtain. */
+  @keyframes sheet {
+    from {
+      opacity: 0.4;
+      transform: translateY(6%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* The flame is never still, and never rhythmic enough to feel mechanical. */
+  @keyframes flicker {
+    0%,
+    100% {
+      opacity: 0.92;
+      transform: scaleY(1) translateY(0);
+    }
+    23% {
+      opacity: 1;
+      transform: scaleY(1.06) translateY(-1px);
+    }
+    47% {
+      opacity: 0.84;
+      transform: scaleY(0.96) translateY(0.5px);
+    }
+    71% {
+      opacity: 0.97;
+      transform: scaleY(1.03) translateY(-0.5px);
+    }
+  }
+
+  @keyframes halo {
+    0%,
+    100% {
+      opacity: 0.34;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.52;
+      transform: scale(1.08);
+    }
+  }
+
+  /* Very slow drift behind the hero, barely perceptible. */
+  @keyframes drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1.04);
+    }
+    50% {
+      transform: translate3d(-1.5%, -1%, 0) scale(1.09);
+    }
+  }
+}

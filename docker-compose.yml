@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-stickers}
+    ports:
+      - "${POSTGRES_PORT:-5442}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-stickers}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9010}:9000"
+      - "${MINIO_CONSOLE_PORT:-9011}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  init-db:
+    build: ./backend
+    command: ["python", "-m", "app.init_infra"]
+    environment: &backend_env
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-stickers}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stickers}
+      MINIO_SECURE: "false"
+      # Dev-only default; the backend logs a warning while it is still 'devtoken'.
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-devtoken}
+      DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-3}
+      NAME_SIMILARITY_THRESHOLD: ${NAME_SIMILARITY_THRESHOLD:-0.4}
+      IMAGE_FORMAT: ${IMAGE_FORMAT:-webp}
+      IMAGE_QUALITY: ${IMAGE_QUALITY:-88}
+      # The Vite proxy sits in front of the backend, so X-Forwarded-For is the
+      # only way to see real client IPs. See the README before exposing this.
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build: ./backend
+    environment: *backend_env
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev          # the Vite dev server; production uses the prod target
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  minio_data:
