@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listEntries } from "../lib/api.js";
 
-const PAGE = 60;
+const PAGE = 50;
 
 /**
  * Loads entries newest-first with append-style paging.

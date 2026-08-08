@@ -1,0 +1,145 @@
+name: Deploy
+
+# Ships the stack files to the single production server over SSH and asks it to
+# pull the images and restart. Nothing is built here — the images come from
+# docker-images.yml, which calls this workflow after a merge to main.
+#
+# Manual runs: Actions → Deploy → "Run workflow", optionally with an image tag
+# (`main`, `v1.2.3`, `sha-<full sha>`) to deploy or roll back to a specific build.
+#
+# Repository secrets:
+#   DEPLOY_HOST         server address (e.g. 203.0.113.10 or stickers.example.com)
+#   DEPLOY_USER         ssh user with docker permissions
+#   DEPLOY_SSH_KEY      private key (the matching public key is in the user's
+#                       ~/.ssh/authorized_keys on the server)
+#   DEPLOY_KNOWN_HOSTS  optional; output of `ssh-keyscan <host>`. When unset the
+#                       key is scanned at deploy time (trust on first use).
+# Repository variables:
+#   DEPLOY_PATH         checkout directory on the server (default /opt/sticker-song)
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Image tag to deploy
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (main, v1.2.3, sha-<full sha>)"
+        type: string
+        required: true
+        default: main
+
+# One deploy at a time; a queued newer deploy waits rather than racing.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: ${{ inputs.image_tag }} → production
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/sticker-song' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authorise SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$DEPLOY_HOST" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host production
+            HostName $DEPLOY_HOST
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            BatchMode yes
+            ServerAliveInterval 20
+          EOF
+
+      # Fail fast, before anything is shipped or restarted: the server needs the
+      # tools the later steps call, and the .env the compose file reads. That
+      # .env is deliberately never shipped from CI, so a first-ever deploy has
+      # to be bootstrapped by hand from .env.prod.example.
+      - name: Check server prerequisites
+        run: |
+          set -euo pipefail
+          ssh production bash -euo pipefail -s "'$DEPLOY_PATH'" <<'REMOTE'
+          path="$1"
+          for cmd in make tar docker; do
+            command -v "$cmd" >/dev/null \
+              || { echo "::error::$cmd is not installed on the deploy host"; exit 1; }
+          done
+          docker compose version >/dev/null \
+            || { echo "::error::the docker compose v2 plugin is unavailable"; exit 1; }
+          [ -f "$path/.env" ] \
+            || { echo "::error::$path/.env is missing — create it from .env.prod.example"; exit 1; }
+          REMOTE
+
+      # Only the files the server actually runs: the compose file, the Makefile
+      # that drives it, and the edge config nginx mounts. The server's .env,
+      # nginx/certs and volumes are never touched. tar over ssh so the server
+      # needs nothing but tar — no rsync, no git checkout to keep in sync.
+      - name: Ship stack files
+        run: |
+          set -euo pipefail
+          ssh production "mkdir -p '$DEPLOY_PATH'"
+          tar -czf - docker-compose.prod.yml Makefile nginx/conf.d \
+            | ssh production "tar -xzf - -C '$DEPLOY_PATH'"
+
+      # A token scoped to this run, valid only while it lasts — no long-lived PAT
+      # sitting in the server's docker config. Needed because the packages are
+      # private; harmless if they are public.
+      - name: Log the server in to GHCR
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | ssh production "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+      - name: Pull and restart
+        run: |
+          set -euo pipefail
+          ssh production bash -euo pipefail -s <<EOF
+          cd '$DEPLOY_PATH'
+          # The tag the stack runs, recorded next to it: a later manual
+          # \`make prod-up\` on the box redeploys this same version.
+          printf 'IMAGE_TAG=%s\n' '$IMAGE_TAG' > .image-tag
+          make prod-deploy
+          EOF
+
+      - name: Wait for the stack to come back healthy
+        run: |
+          set -euo pipefail
+          ssh production "cd '$DEPLOY_PATH' && make prod-health"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deploy \`$IMAGE_TAG\`"
+            echo
+            echo "- host: \`$DEPLOY_HOST\`"
+            echo "- path: \`$DEPLOY_PATH\`"
+            echo "- result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"

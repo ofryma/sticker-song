@@ -29,10 +29,10 @@ export function DuplicateReview({ entry, duplicates, suggestedBestId, onSkip }) 
   const options = [{ ...entry, vote_count: 0, is_exact_match: true, mine: true }, ...duplicates];
 
   return (
-    <section className="mt-16 border-t border-night-line/70 pt-12 animate-fade">
+    <section className="mt-16 border-t border-day-line/70 pt-12 animate-fade">
       <p className="eyebrow mb-4">{t("contribute.kicker")}</p>
-      <h3 className="font-display text-2xl text-stone-50">{t("duplicates.title")}</h3>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-stone-400">{t("duplicates.lead")}</p>
+      <h3 className="font-display text-2xl text-ink">{t("duplicates.title")}</h3>
+      <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-muted">{t("duplicates.lead")}</p>
 
       <ul className="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {options.map((option) => (
@@ -48,17 +48,17 @@ export function DuplicateReview({ entry, duplicates, suggestedBestId, onSkip }) 
         ))}
       </ul>
 
-      {notice && <p className="mt-6 animate-fade text-sm text-stone-400">{notice}</p>}
+      {notice && <p className="mt-6 animate-fade text-sm text-ink-muted">{notice}</p>}
 
       {result && (
-        <div className="mt-8 animate-fade rounded-sm border border-flame/30 bg-flame/[0.05] px-5 py-4">
-          <p className="text-sm text-flame-glow">
+        <div className="mt-8 animate-fade rounded-sm border border-olive/40 bg-olive-pale/60 px-5 py-4">
+          <p className="text-sm text-olive-deep">
             {result.resolved
               ? t("duplicates.resolvedTitle")
               : t("duplicates.progress", { n: result.vote_count, threshold: result.threshold })}
           </p>
           {result.resolved && (
-            <p className="mt-2 text-xs leading-relaxed text-stone-400">
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
               {t("duplicates.resolvedLead")}
             </p>
           )}

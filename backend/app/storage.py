@@ -27,6 +27,13 @@ def build_object_key(extension: str) -> str:
     return f"{uuid.uuid4()}{extension}"
 
 
+def build_thumb_key(object_key: str) -> str:
+    """The thumbnail's key, derived from the full image's so the pair stays obvious
+    in the bucket and a deletion can find both without another column lookup."""
+    stem, dot, extension = object_key.rpartition(".")
+    return f"{stem}_thumb{dot}{extension}" if dot else f"{object_key}_thumb"
+
+
 def upload_image(object_key: str, data: bytes, content_type: str | None) -> None:
     client.put_object(
         settings.minio_bucket,
@@ -61,7 +68,5 @@ def download_image(object_key: str) -> tuple[bytes, str]:
         response.close()
         response.release_conn()
     if not content_type or content_type == "application/octet-stream":
-        content_type = (
-            mimetypes.guess_type(object_key)[0] or "application/octet-stream"
-        )
+        content_type = mimetypes.guess_type(object_key)[0] or "application/octet-stream"
     return data, content_type

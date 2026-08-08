@@ -1,7 +1,8 @@
-name: Build images
+name: CI
 
-# Pushes ghcr.io/<owner>/<repo>/backend and .../frontend. Pull requests build
-# both images to catch breakage, but publish nothing.
+# Lints and tests both halves, then pushes ghcr.io/<owner>/<repo>/backend and
+# .../frontend. Pull requests build both images to catch breakage, but publish
+# nothing. Nothing is published unless the checks pass first.
 on:
   push:
     branches: [main]
@@ -14,7 +15,109 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  backend:
+    name: Backend — ruff + pytest
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The integration tests create this database themselves and install
+      # pg_trgm into it; they skip if it is unreachable, so the URL has to work.
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/stickers_test
+      # tests/test_storage.py drives the real MinIO client; same deal, it skips
+      # when nothing is listening, so the endpoint has to work.
+      TEST_MINIO_ENDPOINT: localhost:9010
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11" # matches the version the Dockerfile pins
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        # --locked fails if uv.lock is stale rather than quietly re-resolving.
+        # The Dockerfile installs with --frozen, so a stale lock would mean the
+        # image and the tests disagree about what is installed.
+        run: uv sync --locked
+
+      # Not a service container: MinIO needs `server /data` as its command, and
+      # `services:` cannot set one. Same image and ports as docker-compose.yml.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9010:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2024-12-18T13-15-44Z server /data
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:9010/minio/health/live && exit 0
+            sleep 2
+          done
+          echo "MinIO did not come up" >&2
+          docker logs minio >&2
+          exit 1
+
+      - name: Ruff lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      - name: Pytest
+        # These turn the integration tests' self-skip into a failure: on CI an
+        # unreachable Postgres or MinIO is a broken job, not a pass.
+        env:
+          REQUIRE_DATABASE: "1"
+          REQUIRE_STORAGE: "1"
+        run: uv run pytest -v --strict-markers
+
+  frontend:
+    name: Frontend — eslint + prettier
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Prettier
+        run: npm run format:check
+
+      - name: Frontend rules (300-line limit, he/en key parity)
+        run: npm run check:rules
+
+      - name: Vitest (draft flow, duplicate review)
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
   build:
+    name: Images
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,3 +170,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # Every merge to main goes straight out, pinned to this commit's images rather
+  # than the moving `main` tag, so the deploy and any rollback name one build.
+  # Deploying by hand is Actions → Deploy → "Run workflow".
+  deploy:
+    name: Deploy
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_tag: sha-${{ github.sha }}
+    secrets: inherit

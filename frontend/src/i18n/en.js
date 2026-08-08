@@ -1,3 +1,6 @@
+import admin from "./en.admin.js";
+import contact from "./en.contact.js";
+
 export default {
   meta: { name: "English", dir: "ltr", locale: "en-US" },
 
@@ -11,26 +14,44 @@ export default {
     wall: "The Wall",
     contribute: "Add a sticker",
     about: "About",
+    contact: "Contact",
     skip: "Skip to content",
     language: "Change language",
   },
 
+  a11y: {
+    open: "Display settings",
+    kicker: "Reading here",
+    title: "Display settings",
+    lead: "Set the page up so it reads comfortably. Every change takes effect at once.",
+    textSize: "Text size",
+    textMark: "A",
+    textStep: ["Regular text", "Larger text", "Largest text"],
+    contrast: "Stronger contrast",
+    contrastHint: "Deeper ink and clearer lines, on the same parchment.",
+    links: "Underline links",
+    linksHint: "Marks every link, not only by its colour.",
+    stillness: "Still page",
+    stillnessHint: "Stops the drifting wall and every other movement.",
+    plainFont: "Plain typeface",
+    plainFontHint: "One evenly spaced font, with more room between the lines.",
+    reset: "Back to the original",
+    done: "Done",
+    storedHint: "The settings stay on your device. Nothing is sent anywhere.",
+  },
+
   home: {
-    kicker: "Memorial archive",
+    kicker: "Remembering well",
     title: "The wall remembers",
     subtitle:
-      "Memorial stickers hang on utility poles, bus shelters and concrete walls. The rain takes them. Here they are kept.",
+      "Faces, names and words, put up in the street by the people who loved them. Here they stay in the light, whole and in colour.",
     scroll: "Keep scrolling",
-    cta: "Enter the wall",
-    ctaSecondary: "Add a sticker you found",
-    countOne: "One name kept",
-    countMany: "{n} names kept",
-    countNone: "The wall is still empty",
-    latest: "Recently added",
-    latestLead: "The last records to arrive from the street.",
-    viewAll: "See the whole wall",
+    cta: "See the wall",
+    countOne: "One name remembered here",
+    countMany: "{n} names remembered here",
+    countNone: "The wall is waiting for its first name",
     howTitle: "Three steps",
-    howLead: "It takes under a minute. The sticker is kept for good.",
+    howLead: "It takes under a minute, and the sticker stays for good.",
     steps: [
       {
         title: "Photograph",
@@ -63,6 +84,9 @@ export default {
     collageHint: "The photographs change on their own. A search stops them.",
     searching: "Showing search results",
     browseAll: "Browse the whole archive",
+    fullscreen: "Fill the screen",
+    exitFullscreen: "Leave the full screen",
+    fullscreenTitle: "The wall, filling the screen",
     backToCollage: "Back to the drifting wall",
     loadMore: "Load more records",
   },
@@ -76,9 +100,12 @@ export default {
     prev: "Previous record",
     next: "Next record",
     openMap: "View on a map",
-    candle: "Light a candle",
-    candleLit: "Candle lit",
+    leaf: "Add a leaf",
+    leafAdded: "Leaf added",
+    leafHint:
+      "A leaf says you stopped here and read their name. It stays on your device, and it is never counted.",
     photo: "Memorial sticker for {name}",
+    reportProblem: "Something wrong with this sticker?",
   },
 
   contribute: {
@@ -90,9 +117,31 @@ export default {
     photoTitle: "Photo of the sticker",
     photoHint: "Photograph the sticker where it is. Up to 10 MB.",
     dropzone: "Drag a photo here, or choose one from your device",
-    dropzoneMobile: "Take or choose a photo",
+    dropzoneMobile: "Choose a photo from your device",
+    openCamera: "Open the camera",
+    cameraTitle: "Camera",
+    cameraStarting: "Opening the camera",
+    cameraShutter: "Take the photo",
+    cameraCancel: "Cancel",
+    cameraDenied: "Camera permission was refused. You can choose a photo from your device instead.",
+    cameraUnavailable:
+      "No camera is available in this browser. You can choose a photo from your device instead.",
+    cameraError: "The camera could not be opened. You can choose a photo from your device instead.",
     replace: "Replace photo",
+    retake: "Take another",
     remove: "Remove photo",
+    crop: "Crop and straighten",
+    cropTitle: "Crop and straighten",
+    cropHint:
+      "Drag the frame over the sticker, and turn the photo if it came out on its side. Arrow keys move the frame; hold shift to resize it.",
+    cropBox: "Crop frame",
+    rotateLeft: "Turn left",
+    rotateRight: "Turn right",
+    flip: "Mirror the photo",
+    cropReset: "Back to the original",
+    cropCancel: "Cancel",
+    cropApply: "Keep this framing",
+    cropFailed: "The photo could not be adjusted. The original is still here.",
     nameTitle: "Name of the fallen",
     nameHint: "The full name, as it appears on the sticker.",
     namePlaceholder: "Full name",
@@ -100,8 +149,7 @@ export default {
     textHint: "Copy everything written on it — verse, date, nickname, unit.",
     textPlaceholder: "Everything written on the sticker",
     locationTitle: "Where it was photographed",
-    locationHint:
-      "Optional. Location helps show how the stickers move through a city.",
+    locationHint: "Optional. Location helps show how the stickers move through a city.",
     useLocation: "Use my current location",
     locating: "Finding location",
     locationSet: "Location attached",
@@ -117,7 +165,11 @@ export default {
     notImage: "That file is not an image.",
     tooLarge: "The photo is larger than 10 MB. Try a smaller one.",
     thanksTitle: "Thank you",
-    thanksLead: "The sticker is in the archive. {name} is kept here now.",
+    thanksLead: "The sticker is in the archive. {name} is remembered here now.",
+    thanksPendingTitle: "Thank you",
+    thanksPendingLead:
+      "The sticker is kept, and {name} will be on the wall once someone has read it through. Every record is looked over by a person first, so what goes up is whole and worthy of them.",
+    thanksPendingHint: "Nothing more is needed from you.",
     thanksView: "See the record",
     thanksAnother: "Document another sticker",
     errorTitle: "Saving failed",
@@ -144,7 +196,8 @@ export default {
     voted: "You have already voted for this photo.",
     progress: "{n} of {threshold} votes",
     resolvedTitle: "The duplicates were merged",
-    resolvedLead: "Records carrying exactly the same name were removed, and the chosen photograph stayed.",
+    resolvedLead:
+      "Records carrying exactly the same name were removed, and the chosen photograph stayed.",
     skip: "Keep both",
   },
 
@@ -152,9 +205,9 @@ export default {
     kicker: "About",
     title: "Why this exists",
     body: [
-      "After the seventh of October the country filled with stickers. Faces, names, ages, verses. Friends, siblings and parents put them on utility poles and bus shelters, and never meant them to last forever.",
-      "The sun bleaches them, the rain peels them, and a newer sticker goes up on top. This project gathers them before they disappear: one photograph, one name, and the words that were chosen for them.",
-      "There are no ratings here, no comments and no algorithm. Only an archive, open to anyone who wants to add a name they kept.",
+      "After the seventh of October the country filled with stickers. Faces, names, ages, verses — put up on utility poles and bus shelters by friends, siblings and parents who wanted the people they loved to be seen.",
+      "Sun and rain take them down, and a newer sticker goes up on top. This archive keeps them in daylight: one photograph, one name, and the words that were chosen for them.",
+      "There are no ratings here, no comments and no algorithm. Only an archive, open to anyone who wants to add a name they carry.",
     ],
     guidelinesTitle: "One request",
     guidelines: [
@@ -167,11 +220,23 @@ export default {
   footer: {
     line: "In their memory",
     built: "An open archive. No advertising, no tracking.",
+    source: "Source code",
   },
 
+  notFound: {
+    kicker: "This page",
+    title: "There is nothing at this address",
+    lead: "The link may have changed, or been mistyped. The wall is where the names are.",
+  },
+
+  contact,
+  admin,
   common: {
     retry: "Try again",
     error: "Something broke on the way.",
+    crashed: "This part of the page could not be shown.",
+    crashedLead: "The rest of the archive is still here. Try again, or start from the beginning.",
+    backHome: "Back to the beginning",
     loading: "Loading",
   },
 };

@@ -1,32 +1,47 @@
-import secrets
-from typing import Annotated
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
+from app.admin_auth import issue_session_token, require_admin, verify_credentials
 from app.config import settings
 from app.db import SessionDep
 from app.models import BlacklistedIp
-from app.schemas import BlacklistCreate, BlacklistRead
+from app.schemas import AdminLogin, AdminSession, BlacklistCreate, BlacklistRead
+
+# Login is the one admin route that cannot require an admin credential.
+login_router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-async def require_admin(
-    x_admin_token: Annotated[str | None, Header()] = None,
-) -> None:
-    if not settings.admin_token:
+@login_router.post("/login", response_model=AdminSession)
+async def login(payload: AdminLogin) -> AdminSession:
+    """Exchange the configured username and password for a short-lived token.
+
+    Lets the management page hold a token that expires on its own instead of the
+    long-lived ADMIN_TOKEN.
+    """
+    if not settings.admin_login_enabled:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Admin API is disabled: ADMIN_TOKEN is not set",
+            "Admin sign-in is disabled: set ADMIN_USERNAME and ADMIN_PASSWORD",
         )
-    if x_admin_token is None or not secrets.compare_digest(
-        x_admin_token, settings.admin_token
-    ):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid admin token")
+    if not verify_credentials(payload.username, payload.password):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Incorrect username or password"
+        )
+
+    token, expires_at = issue_session_token()
+    return AdminSession(token=token, expires_at=datetime.fromtimestamp(expires_at, UTC))
 
 
-router = APIRouter(
-    prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)]
-)
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+
+
+@router.get("/session")
+async def check_session() -> dict[str, bool]:
+    """Whether the credential the caller sent is still good — the page calls this
+    on load to decide between the sign-in form and the queue."""
+    return {"valid": True}
 
 
 @router.post(

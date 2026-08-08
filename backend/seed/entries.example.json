@@ -1,0 +1,14 @@
+[
+  {
+    "image": "photos/example.jpg",
+    "person_name": "שם מלא",
+    "sticker_text": "הכתוב על המדבקה, מילה במילה — פסוק, תאריך, כינוי, יחידה.",
+    "latitude": 32.0853,
+    "longitude": 34.7818
+  },
+  {
+    "image": "photos/another.jpg",
+    "person_name": "Full Name",
+    "sticker_text": "Everything written on the sticker, transcribed exactly."
+  }
+]

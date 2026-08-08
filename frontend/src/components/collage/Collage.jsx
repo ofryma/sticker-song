@@ -1,40 +1,55 @@
 import { useReducedMotion } from "framer-motion";
-import { useCollageCycle, useWide } from "../../hooks/useCollageCycle.js";
+import { useCollageCycle } from "../../hooks/useCollageCycle.js";
+import { usePrefetchThumbs } from "../../hooks/usePrefetchThumbs.js";
+import { useWide } from "../../hooks/useWide.js";
 import { slotsFor } from "./layout.js";
 import { CollageTile } from "./CollageTile.jsx";
 
 /**
  * The wall as a drifting collage: photographs fade in, hold, and give their
- * place to the next name in the archive. Overlapping and slightly rotated, the
- * way stickers actually accumulate on a pole.
+ * place to the next name in the archive, so over a minute of watching the whole
+ * archive passes through. The stickers hang in an even lattice — straight, in
+ * line with each other, each at the proportions it was photographed at.
  *
  * It is ambient, not a way to find someone — that is what the search is for, and
  * cycling stops while a search is open so nothing moves under the reader.
+ *
+ * Only what has been loaded is on the wall: as the cycle nears the end of the
+ * loaded entries it asks for the next page through `onNeedMore`, so an archive
+ * of any size is walked a page at a time rather than fetched whole.
  */
-export function Collage({ entries, onOpen, paused = false }) {
+export function Collage({ entries, onOpen, paused = false, full = false, onNeedMore }) {
   const wide = useWide();
   const reduced = useReducedMotion();
   const slots = slotsFor(wide);
   const slotCount = Math.min(slots.length, entries.length);
 
-  const { assigned, generation } = useCollageCycle({
+  const { assigned, generation, cursor } = useCollageCycle({
     slotCount,
     total: entries.length,
     // Reduced motion keeps a still collage: composed, but never moving.
     paused: paused || Boolean(reduced),
+    onNeedMore,
   });
+
+  usePrefetchThumbs(entries, cursor);
 
   if (entries.length === 0) return null;
 
   return (
     <div
-      className="relative -mx-4 h-[128vh] overflow-hidden sm:mx-0 sm:h-[92vh]"
+      className={[
+        "relative overflow-hidden",
+        // In the page the collage is a tall band that bleeds to the edges; given
+        // the whole screen it simply takes the room it is handed.
+        full ? "h-full w-full" : "-mx-4 h-[128vh] sm:mx-0 sm:h-[92vh]",
+      ].join(" ")}
       aria-hidden={paused ? "true" : undefined}
     >
-      {/* Light pooling behind the collage, so tiles sit in a room, not on a page. */}
+      {/* Daylight pooling behind the collage, so the tiles sit in warm light. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 animate-drift bg-[radial-gradient(50%_40%_at_50%_35%,rgba(240,190,107,0.10),transparent_72%)]"
+        className="animate-drift pointer-events-none absolute inset-0 bg-[radial-gradient(50%_40%_at_50%_35%,rgba(224,160,60,0.16),transparent_72%)]"
       />
 
       {slots.slice(0, slotCount).map((slot, index) => {
@@ -52,11 +67,14 @@ export function Collage({ entries, onOpen, paused = false }) {
         );
       })}
 
-      {/* The collage dissolves into the page rather than ending on a hard edge. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-night to-transparent"
-      />
+      {/* In the page the collage dissolves into what follows rather than ending
+          on a hard edge. On the full screen there is nothing below to meet. */}
+      {!full && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-day to-transparent"
+        />
+      )}
     </div>
   );
 }

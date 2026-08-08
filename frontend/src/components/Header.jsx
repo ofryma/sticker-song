@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem } from "@heroui/react";
 import { Link, NavLink } from "react-router-dom";
 import { useI18n } from "../i18n/index.jsx";
-import { Candle } from "./Candle.jsx";
+import { Sprig } from "./Sprig.jsx";
 import { Action } from "./ui/Action.jsx";
+import { AddSticker } from "./ui/AddSticker.jsx";
 
 const LINKS = [
   { to: "/", key: "nav.home", end: true },
@@ -13,11 +14,11 @@ const LINKS = [
 
 function navClass({ isActive }) {
   return [
-    "relative py-1 text-sm transition-colors duration-700 ease-memorial",
-    isActive ? "text-stone-50" : "text-stone-400 hover:text-stone-100",
+    "relative py-1 text-sm transition-colors duration-700 ease-calm",
+    isActive ? "text-ink" : "text-ink-muted hover:text-ink",
     // The active underline grows out of the center rather than sliding.
-    "after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-flame/60",
-    "after:origin-center after:transition-transform after:duration-1200 after:ease-memorial",
+    "after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-olive/70",
+    "after:origin-center after:transition-transform after:duration-1200 after:ease-calm",
     isActive ? "after:scale-x-100" : "after:scale-x-0",
   ].join(" ");
 }
@@ -30,7 +31,7 @@ export function Header() {
   const { t, other, otherName, setLang } = useI18n();
   const [settled, setSettled] = useState(false);
 
-  // Transparent over the hero, stone-dark once the page has been scrolled.
+  // Transparent over the hero, warm parchment once the page has been scrolled.
   useEffect(() => {
     const onScroll = () => setSettled(window.scrollY > 24);
     onScroll();
@@ -45,17 +46,17 @@ export function Header() {
       isBlurred
       classNames={{
         base: [
-          "border-b transition-all duration-1200 ease-memorial",
+          "border-b transition-all duration-1200 ease-calm",
           "pt-[env(safe-area-inset-top)] sm:h-16",
-          settled ? "bg-night/85 border-night-line/70" : "bg-transparent border-transparent",
+          settled ? "bg-day/90 border-day-line/80" : "bg-transparent border-transparent",
         ].join(" "),
         wrapper: "px-4 sm:px-8",
       }}
     >
       <NavbarBrand>
         <Link to="/" className="group flex items-center gap-2.5 sm:gap-3">
-          <Candle size={15} className="shrink-0 -translate-y-px" />
-          <span className="font-display text-[0.95rem] text-stone-100 transition-colors duration-700 group-hover:text-flame-glow sm:text-lg">
+          <Sprig size={15} className="shrink-0 -translate-y-px" />
+          <span className="font-display text-[0.95rem] text-ink transition-colors duration-700 group-hover:text-olive-deep sm:text-lg">
             {t("brand.name")}
           </span>
         </Link>
@@ -73,15 +74,18 @@ export function Header() {
 
       <NavbarContent justify="end" className="gap-1 sm:gap-2">
         <NavbarItem>
-          <Action tone="quiet" size="sm" onPress={() => setLang(other)} aria-label={t("nav.language")}>
+          <Action
+            tone="quiet"
+            size="sm"
+            onPress={() => setLang(other)}
+            aria-label={t("nav.language")}
+          >
             {otherName}
           </Action>
         </NavbarItem>
         {/* Adding is a bottom-bar tab on mobile, so it only appears here when wide. */}
         <NavbarItem className="hidden sm:flex">
-          <Action tone="candle" size="sm" to="/contribute">
-            {t("nav.contribute")}
-          </Action>
+          <AddSticker size="sm" />
         </NavbarItem>
       </NavbarContent>
     </Navbar>

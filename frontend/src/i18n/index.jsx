@@ -38,10 +38,7 @@ export function I18nProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, lang);
   }, [lang, dir]);
 
-  const t = useCallback(
-    (path, vars) => interpolate(lookup(dict, path), vars),
-    [dict],
-  );
+  const t = useCallback((path, vars) => interpolate(lookup(dict, path), vars), [dict]);
 
   const value = useMemo(
     () => ({

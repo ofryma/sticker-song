@@ -1,21 +1,22 @@
 import { Button } from "@heroui/react";
 import { Link } from "react-router-dom";
 
-/* HeroUI's ripple pops; the memorial tone needs a slow colour shift instead. */
-const SHARED = "font-sans tracking-wide transition-all duration-700 ease-memorial";
+/* HeroUI's ripple pops; this tone needs a slow colour shift instead. */
+const SHARED = "font-sans tracking-wide transition-all duration-700 ease-calm";
 
 const TONES = {
   primary: { color: "primary", variant: "solid", className: "" },
   ghost: {
     color: "default",
     variant: "bordered",
-    className: "border-night-line text-stone-300 hover:border-stone-300/60 hover:text-stone-50",
+    className: "border-day-line text-ink-soft hover:border-ink/30 hover:text-ink",
   },
-  quiet: { color: "default", variant: "light", className: "text-stone-400 hover:text-stone-100" },
-  candle: {
-    color: "warning",
+  quiet: { color: "default", variant: "light", className: "text-ink-muted hover:text-ink" },
+  /* The remembering gesture, and anything already given or chosen. */
+  leaf: {
+    color: "success",
     variant: "bordered",
-    className: "border-flame/35 text-flame hover:border-flame/70 hover:bg-flame/10",
+    className: "border-olive/45 text-olive-deep hover:border-olive/80 hover:bg-olive-pale/70",
   },
 };
 

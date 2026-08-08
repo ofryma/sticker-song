@@ -1,6 +1,6 @@
-const BASE = "/api";
+export const BASE = "/api";
 
-async function unwrap(response) {
+export async function unwrap(response) {
   if (!response.ok) {
     let detail = response.statusText;
     try {
@@ -54,7 +54,40 @@ export async function voteForImage(id) {
   return unwrap(response);
 }
 
+/**
+ * Write to whoever keeps the archive: a suggestion, a bug, or a problem with a
+ * sticker. Nothing to do with `voteForImage` above, which answers exactly one
+ * question about one photograph.
+ *
+ * `website` is the honeypot — a field no person ever sees. It is sent empty and
+ * the backend drops anything that arrives with it filled in.
+ */
+export async function sendMessage({ kind, body, entryId = null, replyEmail = "", website = "" }) {
+  return unwrap(
+    await fetch(`${BASE}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind,
+        body,
+        entry_id: entryId,
+        reply_email: replyEmail || null,
+        website,
+      }),
+    }),
+  );
+}
+
 /** Absolute path for an entry's photo, ready for an <img src>. */
 export function imageUrl(entry) {
   return `${BASE}${entry.image_url}`;
+}
+
+/**
+ * The small copy, for grids and the collage — a wall of full-size webp is a heavy
+ * payload on a phone for pixels nobody sees. Older entries without a stored
+ * thumbnail fall back to the full image server-side, so this is always safe.
+ */
+export function thumbUrl(entry) {
+  return `${BASE}${entry.thumb_url ?? entry.image_url}`;
 }

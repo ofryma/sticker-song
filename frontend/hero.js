@@ -1,57 +1,72 @@
 import { heroui } from "@heroui/theme/plugin";
 
 /**
- * HeroUI's semantic tokens mapped onto the memorial palette, so every component
- * it renders inherits the night-vigil theme instead of the stock blue.
+ * HeroUI's semantic tokens mapped onto the daylight palette, so every component
+ * it renders inherits parchment, ink, tekhelet and olive instead of stock blue.
  */
 export default heroui({
-  defaultTheme: "dark",
-  defaultExtendTheme: "dark",
+  defaultTheme: "light",
+  defaultExtendTheme: "light",
   themes: {
-    dark: {
+    light: {
       colors: {
-        background: "#0A0F1C",
-        foreground: "#E2D9C8",
-        divider: "rgba(226, 217, 200, 0.14)",
-        focus: "#F0BE6B",
-        overlay: "#05080F",
-        content1: "#111829",
-        content2: "#18202F",
-        content3: "#252E40",
-        content4: "#323C50",
+        background: "#FDFAF3",
+        foreground: "#211E18",
+        divider: "rgba(33, 30, 24, 0.12)",
+        focus: "#0038B8",
+        overlay: "#211E18",
+        content1: "#FFFDF8",
+        content2: "#F7F1E3",
+        content3: "#F0E7D4",
+        content4: "#E0D6C1",
         default: {
-          50: "#111829",
-          100: "#18202F",
-          200: "#252E40",
-          300: "#323C50",
-          400: "#7C7160",
-          500: "#A2957D",
-          600: "#C8BCA6",
-          700: "#E2D9C8",
-          800: "#F2EDE3",
-          900: "#FBF8F2",
-          DEFAULT: "#18202F",
-          foreground: "#E2D9C8",
+          50: "#FDFAF3",
+          100: "#F7F1E3",
+          200: "#F0E7D4",
+          300: "#E0D6C1",
+          400: "#8B8374",
+          500: "#6B6453",
+          600: "#464036",
+          700: "#332E26",
+          800: "#211E18",
+          900: "#161310",
+          DEFAULT: "#F0E7D4",
+          foreground: "#211E18",
         },
         // Tekhelet carries every primary action.
         primary: {
-          50: "#04204F",
-          100: "#062A73",
-          200: "#093A9B",
-          300: "#0038B8",
-          400: "#2B60CC",
-          500: "#5B8DE0",
-          600: "#83AAE9",
-          700: "#A9C4EE",
-          800: "#CBDCF5",
-          900: "#E8F0FB",
+          50: "#E8F0FB",
+          100: "#CBDCF5",
+          200: "#A9C4EE",
+          300: "#83AAE9",
+          400: "#5B8DE0",
+          500: "#2B60CC",
+          600: "#0038B8",
+          700: "#093A9B",
+          800: "#062A73",
+          900: "#04204F",
           DEFAULT: "#0038B8",
-          foreground: "#FBF8F2",
+          foreground: "#FDFAF3",
         },
-        // The candle. Reserved for memorial gestures, never for chrome.
+        // Olive: the leaf, and anything that marks something added or chosen.
+        success: {
+          50: "#ECF2DF",
+          100: "#DCE8C7",
+          200: "#A8C47E",
+          300: "#8AAC5C",
+          400: "#6B8F3F",
+          500: "#5A7B33",
+          600: "#47661F",
+          700: "#3A5418",
+          800: "#2C4111",
+          900: "#1F2E0B",
+          DEFAULT: "#6B8F3F",
+          foreground: "#FDFAF3",
+        },
+        // Sun: warmth. Labels and small marks, never a whole surface.
         warning: {
-          DEFAULT: "#F0BE6B",
-          foreground: "#0A0F1C",
+          DEFAULT: "#E0A03C",
+          foreground: "#211E18",
         },
       },
       layout: {

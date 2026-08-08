@@ -1,5 +1,6 @@
-/* Design tokens for The Sticker Song. Night-vigil palette: Jerusalem stone and
-   parchment lit against a deep blue dark, with a single warm candle accent. */
+/* Design tokens for The Sticker Song. Daylight palette: Jerusalem stone and
+   parchment in open light, with olive for growth and sun for warmth. The archive
+   remembers people in the light, so nothing here is dark or dimmed. */
 @theme {
   /* ── Type ────────────────────────────────────────────────────────────────
      Suez One: an Israeli display serif with real weight, for titles.
@@ -9,46 +10,53 @@
   --font-serif: "David Libre", Georgia, serif;
   --font-sans: "Assistant", ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Night — the page rests in darkness, like a room lit by one candle. */
-  --color-night: #0a0f1c;
-  --color-night-soft: #111829;
-  --color-night-raised: #18202f;
-  --color-night-line: #252e40;
+  /* ── Day — parchment and limestone in daylight. Every surface is one of these. */
+  --color-day: #fdfaf3;
+  --color-day-soft: #f7f1e3;
+  --color-day-warm: #f0e7d4;
+  --color-day-line: #e0d6c1;
 
-  /* ── Tekhelet — the blue of the flag and of the tallit. */
+  /* ── Ink — warm near-black for text. Never pure black; the page stays warm. */
+  --color-ink: #211e18;
+  --color-ink-soft: #464036;
+  --color-ink-muted: #6b6453;
+  --color-ink-faint: #8b8374;
+
+  /* ── Tekhelet — the blue of the flag and of the tallit. Primary actions. */
   --color-tekhelet: #0038b8;
-  --color-tekhelet-light: #5b8de0;
-  --color-tekhelet-pale: #a9c4ee;
   --color-tekhelet-deep: #062a73;
+  --color-tekhelet-light: #5b8de0;
+  --color-tekhelet-pale: #dbe5f7;
 
-  /* ── Stone — Jerusalem limestone, the color of the walls stickers live on. */
-  --color-stone-50: #fbf8f2;
-  --color-stone-100: #f2ede3;
-  --color-stone-200: #e2d9c8;
-  --color-stone-300: #c8bca6;
-  --color-stone-400: #a2957d;
-  --color-stone-500: #7c7160;
+  /* ── Olive — growth and continuity, the tree planted in someone's name.
+     Carries the remembering gesture and every mark of something added. */
+  --color-olive: #6b8f3f;
+  --color-olive-deep: #47661f;
+  --color-olive-light: #a8c47e;
+  --color-olive-pale: #ecf2df;
 
-  /* ── Flame — the yahrzeit candle. Sparingly, never for decoration. */
-  --color-flame: #f0be6b;
-  --color-flame-warm: #e39b4a;
-  --color-flame-glow: #ffe9be;
+  /* ── Sun — the warmth on the wall. Labels, hairlines, pools of light. */
+  --color-sun: #e0a03c;
+  /* sun-deep is the only sun that carries text — dark enough for 4.5:1 on day. */
+  --color-sun-deep: #8a5c0e;
+  --color-sun-light: #f4d69f;
+  --color-sun-pale: #fbeed4;
 
-  --tracking-memorial: 0.22em;
+  --tracking-label: 0.22em;
 
   /* Long tail, no overshoot. Everything decelerates into place. */
-  --ease-memorial: cubic-bezier(0.16, 0.8, 0.24, 1);
+  --ease-calm: cubic-bezier(0.16, 0.8, 0.24, 1);
 
-  /* ── Motion. Nothing bounces, springs, or pops. */
-  --animate-rise: rise 1200ms var(--ease-memorial) both;
+  /* ── Motion. Unhurried and gentle; nothing bounces, springs, or pops. */
+  --animate-rise: rise 1200ms var(--ease-calm) both;
   --animate-fade: fade 1800ms ease-out both;
   --animate-fade-slow: fade 2400ms ease-out both;
-  --animate-sheet: sheet 900ms var(--ease-memorial) both;
-  --animate-flicker: flicker 4.2s ease-in-out infinite;
-  --animate-halo: halo 5.5s ease-in-out infinite;
+  --animate-sheet: sheet 900ms var(--ease-calm) both;
+  --animate-unfurl: unfurl 2400ms var(--ease-calm) both;
+  --animate-breathe: breathe 6s ease-in-out infinite;
   --animate-drift: drift 46s ease-in-out infinite;
 
-  /* Content arrives by rising a few pixels out of the dark. */
+  /* Content arrives by rising a few pixels into the light. */
   @keyframes rise {
     from {
       opacity: 0;
@@ -69,7 +77,7 @@
     }
   }
 
-  /* The mobile detail view rises from the bottom edge like a drawn curtain. */
+  /* The mobile detail view rises from the bottom edge. */
   @keyframes sheet {
     from {
       opacity: 0.4;
@@ -81,36 +89,30 @@
     }
   }
 
-  /* The flame is never still, and never rhythmic enough to feel mechanical. */
-  @keyframes flicker {
-    0%,
-    100% {
-      opacity: 0.92;
-      transform: scaleY(1) translateY(0);
+  /* A leaf opening: it grows into place once and stays. No overshoot — a plant
+     does not spring, and the end state is the resting state. */
+  @keyframes unfurl {
+    from {
+      opacity: 0;
+      transform: scale(0.86) rotate(-5deg);
     }
-    23% {
+    to {
       opacity: 1;
-      transform: scaleY(1.06) translateY(-1px);
-    }
-    47% {
-      opacity: 0.84;
-      transform: scaleY(0.96) translateY(0.5px);
-    }
-    71% {
-      opacity: 0.97;
-      transform: scaleY(1.03) translateY(-0.5px);
+      transform: scale(1) rotate(0deg);
     }
   }
 
-  @keyframes halo {
+  /* Slow breathing, for waiting states and pools of light. Never rhythmic
+     enough to read as a spinner. */
+  @keyframes breathe {
     0%,
     100% {
-      opacity: 0.34;
+      opacity: 0.45;
       transform: scale(1);
     }
     50% {
-      opacity: 0.52;
-      transform: scale(1.08);
+      opacity: 0.9;
+      transform: scale(1.06);
     }
   }
 
@@ -124,4 +126,24 @@
       transform: translate3d(-1.5%, -1%, 0) scale(1.09);
     }
   }
+}
+
+/* ── Stronger contrast, when a visitor asks for it in the accessibility panel.
+   Still daylight: the parchment surfaces do not move, the ink and the accents
+   deepen until every pair clears 7:1, and the hairlines become visible lines. */
+html[data-a11y-contrast="on"] {
+  --color-ink: #100e0a;
+  --color-ink-soft: #1b180f;
+  --color-ink-muted: #2c2718;
+  --color-ink-faint: #46402f;
+
+  --color-day-soft: #f8f3e8;
+  --color-day-warm: #f1e9d9;
+  --color-day-line: #8d8471;
+
+  --color-tekhelet: #002a8c;
+  --color-tekhelet-deep: #03204f;
+  --color-olive: #4b6a22;
+  --color-olive-deep: #33500f;
+  --color-sun-deep: #6b4708;
 }

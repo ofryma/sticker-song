@@ -2,22 +2,19 @@ import { Input, Textarea } from "@heroui/react";
 import { useI18n } from "../../i18n/index.jsx";
 import { PhotoField } from "./PhotoField.jsx";
 import { LocationField } from "./LocationField.jsx";
+import { FIELD } from "../ui/field.js";
 
-/* One place for field styling, so the wizard reads as a single form. */
-const FIELD = {
-  input: "text-base placeholder:text-stone-500",
-  inputWrapper:
-    "border-night-line bg-night/60 transition-colors duration-700 ease-memorial " +
-    "hover:border-tekhelet-light/50 group-data-[focus=true]:border-tekhelet-light",
-};
-
+/* A column, so a step that wants the room — the photograph — can take it and
+   the step still ends where the screen does. */
 function StepShell({ title, hint, children, blocker }) {
   return (
-    <div className="animate-rise" key={title}>
-      <h2 className="font-display text-2xl text-stone-50 sm:text-3xl">{title}</h2>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-stone-400">{hint}</p>
-      <div className="mt-9">{children}</div>
-      {blocker && <p className="mt-4 animate-fade text-sm text-flame-warm">{blocker}</p>}
+    <div className="flex min-h-0 flex-1 flex-col animate-rise" key={title}>
+      <h2 className="shrink-0 font-display text-2xl text-ink sm:text-3xl">{title}</h2>
+      <p className="mt-2 max-w-lg shrink-0 text-sm leading-relaxed text-ink-muted sm:mt-3">
+        {hint}
+      </p>
+      <div className="mt-5 flex min-h-0 flex-1 flex-col sm:mt-9">{children}</div>
+      {blocker && <p className="mt-3 shrink-0 animate-fade text-sm text-sun-deep">{blocker}</p>}
     </div>
   );
 }
@@ -29,15 +26,23 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 
   if (step === "photo") {
     return (
-      <StepShell title={t("contribute.photoTitle")} hint={t("contribute.photoHint")} blocker={message}>
-        <PhotoField file={draft.image} preview={preview} onPick={setImage} />
+      <StepShell
+        title={t("contribute.photoTitle")}
+        hint={t("contribute.photoHint")}
+        blocker={message}
+      >
+        <PhotoField preview={preview} onPick={setImage} />
       </StepShell>
     );
   }
 
   if (step === "name") {
     return (
-      <StepShell title={t("contribute.nameTitle")} hint={t("contribute.nameHint")} blocker={message}>
+      <StepShell
+        title={t("contribute.nameTitle")}
+        hint={t("contribute.nameHint")}
+        blocker={message}
+      >
         <Input
           value={draft.personName}
           onValueChange={(personName) => set({ personName })}
@@ -57,7 +62,11 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 
   if (step === "text") {
     return (
-      <StepShell title={t("contribute.textTitle")} hint={t("contribute.textHint")} blocker={message}>
+      <StepShell
+        title={t("contribute.textTitle")}
+        hint={t("contribute.textHint")}
+        blocker={message}
+      >
         <Textarea
           value={draft.stickerText}
           onValueChange={(stickerText) => set({ stickerText })}
@@ -84,19 +93,19 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
 export function DraftReview({ draft, preview }) {
   const { t } = useI18n();
   return (
-    <div className="mt-14 border-t border-night-line/70 pt-10">
+    <div className="mt-14 border-t border-day-line/70 pt-10">
       <p className="eyebrow mb-6">{t("contribute.review")}</p>
       <div className="flex flex-col gap-6 sm:flex-row">
         {preview && (
           <img
             src={preview}
             alt=""
-            className="h-32 w-28 shrink-0 rounded-sm border border-night-line object-cover"
+            className="h-32 w-28 shrink-0 rounded-sm border border-day-line object-cover"
           />
         )}
         <div className="min-w-0">
-          <p className="font-display text-xl text-stone-50">{draft.personName}</p>
-          <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-stone-400">
+          <p className="font-display text-xl text-ink">{draft.personName}</p>
+          <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-ink-muted">
             {draft.stickerText}
           </p>
         </div>

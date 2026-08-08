@@ -25,7 +25,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-night-line/80 bg-night/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-day-line/80 bg-day/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] sm:hidden"
       aria-label={t("nav.wall")}
     >
       <ul className="flex items-stretch">
@@ -37,14 +37,14 @@ export function BottomNav() {
               className={({ isActive }) =>
                 [
                   "flex min-h-[3.75rem] flex-col items-center justify-center gap-1.5 px-1 py-2",
-                  "transition-colors duration-700 ease-memorial",
+                  "transition-colors duration-700 ease-calm",
                   isActive
                     ? tab.accent
-                      ? "text-flame-glow"
-                      : "text-stone-50"
+                      ? "text-olive-deep"
+                      : "text-ink"
                     : tab.accent
-                      ? "text-flame/70"
-                      : "text-stone-500",
+                      ? "text-olive/80"
+                      : "text-ink-muted",
                 ].join(" ")
               }
             >
@@ -63,8 +63,8 @@ export function BottomNav() {
                     {/* The active dot fades in rather than sliding between tabs. */}
                     <span
                       className={[
-                        "absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-flame",
-                        "transition-opacity duration-1200 ease-memorial",
+                        "absolute -top-2 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-olive",
+                        "transition-opacity duration-1200 ease-calm",
                         isActive ? "opacity-100" : "opacity-0",
                       ].join(" ")}
                     />

@@ -15,7 +15,39 @@ dependencies = [
     "minio>=7.2.0",
     "pillow>=11.0.0",
     "pillow-heif>=0.20.0",
+    "anthropic>=0.75.0",
 ]
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# Integration tests need Postgres with pg_trgm; they skip themselves when
+# TEST_DATABASE_URL points at nothing reachable.
+markers = ["integration: needs a live Postgres (see tests/conftest.py)"]
+filterwarnings = [
+    # FastAPI's on_event is deprecated but still what app/main.py uses.
+    "ignore:\\s*on_event is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 90
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Fixtures shadow their own names by design, and tests assert on private helpers.
+"tests/*" = ["B008"]

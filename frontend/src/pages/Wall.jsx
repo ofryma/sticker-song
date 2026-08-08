@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "../i18n/index.jsx";
 import { useEntries } from "../hooks/useEntries.js";
 import { matchesQuery, pluralCount } from "../lib/format.js";
 import { Page } from "../components/Section.jsx";
 import { Collage } from "../components/collage/Collage.jsx";
 import { WallGrid } from "../components/WallGrid.jsx";
+import { WallStage } from "../components/WallStage.jsx";
 import { EntryDetail } from "../components/EntryDetail.jsx";
 import { EmptyWall, ErrorState, Loading, NoResults } from "../components/States.jsx";
 import { WallSearchBar } from "../components/WallSearchBar.jsx";
 import { Action } from "../components/ui/Action.jsx";
+import { requestFullscreen } from "../hooks/useFullscreen.js";
 
 export default function Wall() {
   const { t } = useI18n();
@@ -16,6 +18,14 @@ export default function Wall() {
   const [query, setQuery] = useState("");
   const [browsing, setBrowsing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  // The collage, alone on the screen. Asking for the screen has to happen inside
+  // the press itself, or the browser treats it as unprompted and refuses.
+  const [staged, setStaged] = useState(false);
+  const openStage = () => {
+    requestFullscreen();
+    setStaged(true);
+  };
+  const closeStage = useCallback(() => setStaged(false), []);
 
   const searching = query.trim().length > 0;
   // Search and full browsing both replace the collage with a readable grid.
@@ -34,6 +44,9 @@ export default function Wall() {
   };
 
   const ready = status === "ready" && entries.length > 0;
+  // The collage pulls the next page itself as it reaches the end of the loaded
+  // entries; once the archive is exhausted there is nothing left to ask for.
+  const needMore = exhausted ? undefined : loadMore;
 
   return (
     // The images open the page; the words and the search sit beneath them.
@@ -43,7 +56,13 @@ export default function Wall() {
 
       {status === "ready" && entries.length === 0 && <EmptyWall />}
 
-      {ready && !listed && <Collage entries={entries} onOpen={(entry) => setSelectedId(entry.id)} />}
+      {ready && !listed && (
+        <Collage
+          entries={entries}
+          onOpen={(entry) => setSelectedId(entry.id)}
+          onNeedMore={needMore}
+        />
+      )}
 
       {ready &&
         listed &&
@@ -64,7 +83,7 @@ export default function Wall() {
 
       {ready && (
         <div className="mt-6 flex items-center justify-between gap-4">
-          <p className="text-xs tracking-memorial text-stone-500 uppercase">
+          <p className="text-xs tracking-label text-ink-muted uppercase">
             {pluralCount(t, "wall.results", listed ? visible.length : entries.length)}
           </p>
           {listed ? (
@@ -74,24 +93,38 @@ export default function Wall() {
               </Action>
             )
           ) : (
-            <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
-              {t("wall.browseAll")}
-            </Action>
+            <div className="flex shrink-0 items-center gap-1">
+              <Action tone="quiet" size="sm" onPress={openStage}>
+                {t("wall.fullscreen")}
+              </Action>
+              <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
+                {t("wall.browseAll")}
+              </Action>
+            </div>
           )}
         </div>
       )}
 
       <header className="mt-12 max-w-xl sm:mt-16">
         <p className="eyebrow mb-3">{t("wall.kicker")}</p>
-        <h1 className="font-display text-3xl leading-tight text-stone-50 sm:text-4xl">
+        <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
           {t("wall.title")}
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-stone-400">
+        <p className="mt-4 text-sm leading-relaxed text-ink-muted">
           {listed ? t("wall.lead") : t("wall.collageHint")}
         </p>
       </header>
 
       {ready && <WallSearchBar value={query} onChange={setQuery} />}
+
+      {ready && staged && !listed && (
+        <WallStage
+          entries={entries}
+          onOpen={(entry) => setSelectedId(entry.id)}
+          onClose={closeStage}
+          onNeedMore={needMore}
+        />
+      )}
 
       <EntryDetail
         entry={index >= 0 ? visible[index] : null}

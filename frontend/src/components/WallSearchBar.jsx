@@ -8,7 +8,7 @@ import { SearchField } from "./SearchField.jsx";
  */
 export function WallSearchBar({ value, onChange }) {
   return (
-    <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-12 border-t border-night-line/70 bg-night/95 backdrop-blur-md sm:bottom-0 sm:-mx-8">
+    <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-12 border-t border-day-line/70 bg-day/95 backdrop-blur-md sm:bottom-0 sm:-mx-8">
       <div className="mx-auto flex max-w-6xl justify-center px-4 py-3 sm:px-8 sm:py-4">
         <SearchField value={value} onChange={onChange} />
       </div>

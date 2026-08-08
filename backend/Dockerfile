@@ -11,8 +11,13 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies first so code changes don't invalidate the layer.
-COPY pyproject.toml ./
-RUN uv sync --no-dev
+# --frozen installs exactly what uv.lock pins and never re-resolves, so an image
+# built from a given commit today matches one built from it next year. Note it
+# does NOT verify the lock against pyproject.toml — a dependency added without
+# re-locking is silently absent from the image. CI runs `uv sync --locked`,
+# which fails on a stale lock, so that cannot reach main unnoticed.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
 COPY . .
 

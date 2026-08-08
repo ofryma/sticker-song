@@ -15,8 +15,8 @@ export function SectionHeading({ kicker, title, lead, action }) {
     <div className="mb-10 flex flex-col gap-5 sm:mb-12 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-2xl">
         {kicker && <p className="eyebrow mb-4">{kicker}</p>}
-        <h2 className="font-display text-3xl leading-tight text-stone-50 sm:text-4xl">{title}</h2>
-        {lead && <p className="mt-4 text-sm leading-relaxed text-stone-400 sm:text-base">{lead}</p>}
+        <h2 className="font-display text-3xl leading-tight text-ink sm:text-4xl">{title}</h2>
+        {lead && <p className="mt-4 text-sm leading-relaxed text-ink-muted sm:text-base">{lead}</p>}
       </div>
       {action}
     </div>
