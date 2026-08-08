@@ -170,3 +170,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # Every merge to main goes straight out, pinned to this commit's images rather
+  # than the moving `main` tag, so the deploy and any rollback name one build.
+  # Deploying by hand is Actions → Deploy → "Run workflow".
+  deploy:
+    name: Deploy
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_tag: sha-${{ github.sha }}
+    secrets: inherit

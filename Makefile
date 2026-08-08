@@ -1,9 +1,17 @@
 .PHONY: up down logs build reset migration backend-shell seed \
         dev dev-infra dev-infra-down dev-backend dev-frontend \
         test test-backend test-frontend lint lint-backend lint-frontend check \
-        prod-pull prod-up prod-down prod-logs
+        prod-pull prod-up prod-down prod-logs prod-deploy prod-health
 
-PROD := docker compose -f docker-compose.prod.yml
+# `.image-tag` holds the version the server runs (IMAGE_TAG=sha-...). The deploy
+# workflow writes it before calling prod-deploy; it is created on demand with
+# IMAGE_TAG=main so a hand-run stack works without CI. Later --env-file wins, so
+# it overrides IMAGE_TAG in .env and nothing else.
+IMAGE_TAG_FILE := .image-tag
+PROD := docker compose -f docker-compose.prod.yml --env-file .env --env-file $(IMAGE_TAG_FILE)
+
+$(IMAGE_TAG_FILE):
+	@echo "IMAGE_TAG=main" > $@
 
 # Host ports the compose infra publishes; keep in sync with docker-compose.yml.
 POSTGRES_PORT ?= 5442
@@ -93,11 +101,25 @@ check: lint test           ## everything CI checks, in one go
 
 # --- production, on the server (needs .env; see .env.prod.example) ------------
 
-prod-pull:                 ## fetch the images named by IMAGE_REPO/IMAGE_TAG
+prod-pull: $(IMAGE_TAG_FILE)   ## fetch the images named by IMAGE_REPO/IMAGE_TAG
 	$(PROD) pull
 
 prod-up: prod-pull         ## deploy or update the running stack
 	$(PROD) up -d
+
+prod-deploy: prod-up       ## what CI runs: pull, restart, reclaim disk
+	$(PROD) ps
+	docker image prune -f
+
+prod-health:               ## block until the API answers, or fail after ~90s
+	@for i in $$(seq 1 30); do \
+	  if $(PROD) exec -T backend python -c \
+	      'import urllib.request; urllib.request.urlopen("http://localhost:8000/health")' \
+	      >/dev/null 2>&1; then echo "backend healthy"; exit 0; fi; \
+	  sleep 3; \
+	done; \
+	echo "backend did not become healthy" >&2; \
+	$(PROD) ps; $(PROD) logs --tail=80 backend init-db >&2; exit 1
 
 prod-down:
 	$(PROD) down

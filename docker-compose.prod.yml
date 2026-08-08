@@ -7,10 +7,41 @@
 #
 # Images are built and pushed by .github/workflows/docker-images.yml. Set
 # IMAGE_TAG to pin a release; the default tracks main.
+#
+# Sized for a 1 GB / 1 vCPU host (a Linode Nanode, a Hetzner CX22 with room to
+# spare). Every service carries a mem_limit, and together they come to ~736 MB,
+# leaving the rest for the kernel and dockerd. The limits are what turn "the box
+# died" into "one container was restarted", so keep them even on a larger
+# machine — raise the numbers instead of removing them.
+#
+# NOTE: never build on a 1 GB host. The frontend's Vite build alone wants more
+# than the whole machine. These images are pulled, which is why it works.
+
+# Docker's default json-file driver never rotates, and an unnoticed error loop
+# will fill a small disk with its own logs. Capped at 30 MB a service.
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   postgres:
+    logging: *default_logging
     image: postgres:16-alpine
+    # Tuned down from defaults that assume a much bigger machine. max_connections
+    # has to stay above the API's pool ceiling (DB_POOL_SIZE + DB_MAX_OVERFLOW,
+    # 10 by default) with room left for a migration and a psql session.
+    command: >
+      postgres
+      -c max_connections=20
+      -c shared_buffers=48MB
+      -c effective_cache_size=128MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c max_worker_processes=2
+      -c max_parallel_workers=2
+      -c max_parallel_workers_per_gather=0
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -22,14 +53,22 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    mem_limit: ${POSTGRES_MEM:-160m}
     restart: unless-stopped
 
   minio:
+    logging: *default_logging
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env}
+      # MinIO is Go, and Go's collector will happily grow to whatever the host
+      # has. GOMEMLIMIT makes it collect against a target instead — set below
+      # mem_limit so the GC reacts before the kernel's OOM killer does.
+      GOMEMLIMIT: ${MINIO_GOMEMLIMIT:-180MiB}
+      # Bound the request buffers a burst can allocate.
+      MINIO_API_REQUESTS_MAX: ${MINIO_API_REQUESTS_MAX:-32}
     volumes:
       - minio_data:/data
     healthcheck:
@@ -37,9 +76,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    mem_limit: ${MINIO_MEM:-224m}
     restart: unless-stopped
 
   init-db:
+    logging: *default_logging
     image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/backend:${IMAGE_TAG:-main}
     command: ["python", "-m", "app.init_infra"]
     environment: &backend_env
@@ -59,10 +100,18 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       REVIEW_MODEL: ${REVIEW_MODEL:-claude-opus-5}
       THUMBNAIL_MAX_EDGE: ${THUMBNAIL_MAX_EDGE:-640}
-      DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-3}
+      DUPLICATE_VOTE_THRESHOLD: ${DUPLICATE_VOTE_THRESHOLD:-20}
       NAME_SIMILARITY_THRESHOLD: ${NAME_SIMILARITY_THRESHOLD:-0.4}
       IMAGE_FORMAT: ${IMAGE_FORMAT:-webp}
       IMAGE_QUALITY: ${IMAGE_QUALITY:-88}
+      # The two knobs that bound peak memory during an upload: how large a frame
+      # may be decoded, and how many may be decoded at once. 50 MP x 3 bytes is
+      # ~150 MB, so at a concurrency of 2 the worst case sits inside the limit
+      # below. Lower either one before raising the container's memory.
+      MAX_IMAGE_MEGAPIXELS: ${MAX_IMAGE_MEGAPIXELS:-50}
+      IMAGE_CONCURRENCY: ${IMAGE_CONCURRENCY:-2}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
       # Real client IPs arrive as X-Forwarded-For from the nginx edge only.
       TRUST_PROXY_HEADERS: "true"
     depends_on:
@@ -70,9 +119,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    mem_limit: ${BACKEND_MEM:-288m}
     restart: "no"
 
   backend:
+    logging: *default_logging
     image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/backend:${IMAGE_TAG:-main}
     environment: *backend_env
     expose:
@@ -80,15 +131,30 @@ services:
     depends_on:
       init-db:
         condition: service_completed_successfully
+    # python:3.12-slim ships no curl or wget, so the check is python itself.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8000/health")
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    mem_limit: ${BACKEND_MEM:-288m}
     restart: unless-stopped
 
   frontend:
+    logging: *default_logging
     image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/frontend:${IMAGE_TAG:-main}
     expose:
       - "80"
+    mem_limit: ${FRONTEND_MEM:-24m}
     restart: unless-stopped
 
   nginx:
+    logging: *default_logging
     image: nginx:1.27-alpine
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -100,6 +166,7 @@ services:
     depends_on:
       - backend
       - frontend
+    mem_limit: ${NGINX_MEM:-40m}
     restart: unless-stopped
 
 volumes:
