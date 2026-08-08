@@ -2,6 +2,7 @@ import { useI18n } from "../i18n/index.jsx";
 import { pluralCount } from "../lib/format.js";
 import { Sprig } from "./Sprig.jsx";
 import { Action } from "./ui/Action.jsx";
+import { AddSticker } from "./ui/AddSticker.jsx";
 
 /**
  * Opening screen: a single leaf in open daylight, the title, and two very slow
@@ -24,8 +25,7 @@ export function Hero({ count }) {
       />
 
       <div className="relative flex flex-col items-center">
-        <Sprig size={46} className="animate-unfurl sm:hidden" />
-        <Sprig size={58} className="hidden animate-unfurl sm:inline-flex" />
+        <Sprig size={46} sizeSm={58} className="animate-unfurl" />
 
         <p className="eyebrow mt-9 animate-fade sm:mt-12" style={{ animationDelay: "500ms" }}>
           {t("home.kicker")}
@@ -49,11 +49,10 @@ export function Hero({ count }) {
           className="mt-10 flex w-full max-w-xs animate-rise flex-col items-stretch gap-3 sm:mt-12 sm:w-auto sm:max-w-none sm:flex-row sm:items-center sm:gap-4"
           style={{ animationDelay: "2100ms" }}
         >
-          <Action to="/wall" size="lg" className="w-full sm:w-auto">
+          {/* Where two actions sit together, the solid one is always this one. */}
+          <AddSticker size="lg" className="w-full sm:w-auto" />
+          <Action tone="ghost" to="/wall" size="lg" className="w-full sm:w-auto">
             {t("home.cta")}
-          </Action>
-          <Action tone="ghost" to="/contribute" size="lg" className="w-full sm:w-auto">
-            {t("home.ctaSecondary")}
           </Action>
         </div>
 

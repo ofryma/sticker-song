@@ -8,11 +8,11 @@ reviewer's.
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, or_, select
 
 from app import review
 from app.admin_auth import require_admin
@@ -28,6 +28,7 @@ from app.schemas import (
     MemorialEntryReview,
     ReviewCounts,
     ReviewDecision,
+    ReviewPage,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,27 +38,108 @@ router = APIRouter(
 )
 
 StatusFilter = Literal["pending", "published", "rejected", "all"]
+#: What the automatic reader said, as something to filter on. "unread" is the
+#: absence of a verdict, which no equality test would catch.
+ReadFilter = Literal["any", "flag", "ok", "error", "unread"]
+SortField = Literal["added", "name", "status", "read"]
+SortOrder = Literal["asc", "desc"]
+
+#: Both of these sort by meaning rather than by alphabet: what still needs a
+#: decision comes before what has had one, and what was flagged before what was
+#: not. Anything unknown — including an unread entry — sorts last.
+STATUS_ORDER = case(
+    {"pending": 0, "published": 1, "rejected": 2},
+    value=MemorialEntry.status,
+    else_=3,
+)
+READ_ORDER = case(
+    {"flag": 0, "ok": 1, "error": 2},
+    value=MemorialEntry.llm_verdict,
+    else_=3,
+)
+SORT_COLUMNS = {
+    "added": MemorialEntry.created_at,
+    # The normalized form, so "David" and "david " land next to each other.
+    "name": MemorialEntry.person_name_normalized,
+    "status": STATUS_ORDER,
+    "read": READ_ORDER,
+}
 
 
-@router.get("", response_model=list[MemorialEntryReview])
+def _conditions(
+    status_filter: str, q: str | None, read: str, added_within_days: int | None
+) -> list:
+    """Everything the caller asked to narrow by, as SQL. Applied identically to
+    the page and to the count behind it."""
+    conditions = []
+    if status_filter != "all":
+        conditions.append(MemorialEntry.status == status_filter)
+    if q:
+        # ILIKE rather than pg_trgm: a reviewer types a fragment of a name or of
+        # the transcription and expects a substring match, not a fuzzy one.
+        like = f"%{q.strip()}%"
+        conditions.append(
+            or_(
+                MemorialEntry.person_name.ilike(like),
+                MemorialEntry.sticker_text.ilike(like),
+            )
+        )
+    if read == "unread":
+        conditions.append(MemorialEntry.llm_verdict.is_(None))
+    elif read != "any":
+        conditions.append(MemorialEntry.llm_verdict == read)
+    if added_within_days is not None:
+        cutoff = datetime.now(UTC) - timedelta(days=added_within_days)
+        conditions.append(MemorialEntry.created_at >= cutoff)
+    return conditions
+
+
+@router.get("", response_model=ReviewPage)
 async def list_for_review(
     session: SessionDep,
     status_filter: Annotated[StatusFilter, Query(alias="status")] = "pending",
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    read: ReadFilter = "any",
+    added_within_days: Annotated[int | None, Query(ge=1, le=3650)] = None,
+    sort: SortField = "added",
+    order: SortOrder | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[MemorialEntry]:
-    """The queue. Oldest first for pending — a submission should not wait behind
-    newer ones — and newest first for everything else."""
-    query = select(MemorialEntry)
-    if status_filter != "all":
-        query = query.where(MemorialEntry.status == status_filter)
-    order = (
-        MemorialEntry.created_at.asc()
-        if status_filter == "pending"
-        else MemorialEntry.created_at.desc()
+) -> ReviewPage:
+    """One page of the queue, narrowed and ordered by the database.
+
+    Filtering and paging happen here rather than in the browser: with thousands
+    of stickers, sending the whole archive so the review page can hide most of it
+    is the expensive way to answer a question Postgres can answer directly.
+
+    Without an explicit `order`, the default reads the way a reviewer works:
+    oldest first for what is waiting — a submission should not wait behind newer
+    ones — and newest first for everything else.
+    """
+    if order is None:
+        order = "asc" if sort == "added" and status_filter == "pending" else "desc"
+    conditions = _conditions(status_filter, q, read, added_within_days)
+
+    column = SORT_COLUMNS[sort]
+    direction = column.asc() if order == "asc" else column.desc()
+    # A total order, so paging never repeats or skips a row when the sort key
+    # ties — as it does for every entry sharing a status.
+    ordering = (direction, MemorialEntry.created_at.desc(), MemorialEntry.id)
+
+    total = await session.scalar(select(func.count(MemorialEntry.id)).where(*conditions))
+    rows = await session.scalars(
+        select(MemorialEntry)
+        .where(*conditions)
+        .order_by(*ordering)
+        .limit(limit)
+        .offset(offset)
     )
-    result = await session.scalars(query.order_by(order).limit(limit).offset(offset))
-    return list(result)
+    return ReviewPage(
+        items=[MemorialEntryReview.model_validate(row) for row in rows],
+        total=total or 0,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/counts", response_model=ReviewCounts)

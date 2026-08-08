@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 /** A fresh round of assignments for `slotCount` slots. */
 function freshCycle(slotCount) {
@@ -62,22 +62,4 @@ export function useCollageCycle({ slotCount, total, paused, stepMs = 2600 }) {
 
   const current = cycle.slotCount === slotCount ? cycle : freshCycle(slotCount);
   return { assigned: current.assigned, generation: current.generation };
-}
-
-/** True while the viewport is at least `query` wide. */
-export function useWide(query = "(min-width: 640px)") {
-  // Read straight from the media query instead of mirroring it into state: the
-  // value stays in step with the browser with no setState on mount.
-  const subscribe = useCallback(
-    (onChange) => {
-      const media = window.matchMedia(query);
-      media.addEventListener("change", onChange);
-      return () => media.removeEventListener("change", onChange);
-    },
-    [query],
-  );
-
-  const snapshot = useCallback(() => window.matchMedia(query).matches, [query]);
-
-  return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

@@ -1,6 +1,7 @@
 import { useI18n } from "../i18n/index.jsx";
 import { Sprig } from "./Sprig.jsx";
 import { Action } from "./ui/Action.jsx";
+import { AddSticker } from "./ui/AddSticker.jsx";
 
 /** Waiting state: three slow-breathing marks, nothing that spins. */
 export function Loading({ label }) {
@@ -47,9 +48,7 @@ export function EmptyWall() {
       <Sprig size={32} className="animate-unfurl" />
       <p className="font-display text-xl text-ink">{t("wall.empty")}</p>
       <p className="text-sm text-ink-muted">{t("wall.emptyLead")}</p>
-      <Action tone="ghost" to="/contribute" className="mt-2">
-        {t("nav.contribute")}
-      </Action>
+      <AddSticker className="mt-2" />
     </div>
   );
 }

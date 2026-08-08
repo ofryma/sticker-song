@@ -136,7 +136,9 @@ async def test_the_queue_lists_pending_entries_only(
 
     queue = await client.get("/admin/entries", headers=headers)
 
-    assert [row["id"] for row in queue.json()] == [waiting["id"]]
+    body = queue.json()
+    assert [row["id"] for row in body["items"]] == [waiting["id"]]
+    assert body["total"] == 1
     counts = (await client.get("/admin/entries/counts", headers=headers)).json()
     assert counts == {"pending": 1, "published": 1, "rejected": 0}
 
@@ -216,7 +218,7 @@ async def test_a_failing_model_does_not_cost_the_submission(
     assert response.status_code == 201
     headers = await sign_in(client, admin_credentials)
     queue = (await client.get("/admin/entries", headers=headers)).json()
-    assert [row["llm_verdict"] for row in queue] == [None]
+    assert [row["llm_verdict"] for row in queue["items"]] == [None]
 
 
 async def test_no_api_key_means_no_note(client, review_required, monkeypatch) -> None:

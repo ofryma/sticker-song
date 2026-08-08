@@ -71,8 +71,30 @@
     background: linear-gradient(to right, transparent, rgba(138, 92, 14, 0.28), transparent);
   }
 
+  /* One cell of the collage lattice. A size container, so a sticker can be sized
+     against the cell's height and keep the proportions it was photographed at. */
+  .collage-cell {
+    container-type: size;
+  }
+
   /* The standard raised surface: warm paper on the parchment page. */
   .card-stone {
     @apply border-day-line/90 bg-day-soft/70 rounded-sm border backdrop-blur-sm;
+  }
+
+  /* The wizard on a phone: exactly the height left between the header and the
+     bottom bar, so a step is always whole on the screen and there is nothing to
+     scroll. The step body flexes inside it and the photograph takes the slack.
+     From `sm` the page grows normally again. */
+  .wizard-viewport {
+    height: calc(
+      100svh - 3.5rem - 3.75rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+  }
+
+  @media (width >= 40rem) {
+    .wizard-viewport {
+      height: auto;
+    }
   }
 }

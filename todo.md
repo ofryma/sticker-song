@@ -81,6 +81,47 @@
 * `GET /entries` has no cursor pagination and the wall pages by offset; fine at
   launch scale, revisit if the archive grows
 
+## Contact form
+
+A way for visitors to reach us from the site: suggestions, bugs, and problems
+with a specific sticker (wrong name, bad transcription, wrong person, a family
+asking for a takedown). Today the only route is the entry image vote, and the
+privacy notice and accessibility statement both promise a contact address they
+cannot yet point at.
+
+* Pick a name that does not collide with the existing
+  `POST /entries/{id}/feedback` (the "best image for this person" vote). Suggest
+  `POST /messages` for the endpoint and `contact_messages` for the table
+* Backend: model + migration (`id`, `kind`, `body`, optional `entry_id` FK
+  `ON DELETE SET NULL`, optional `reply_email`, `submitter_ip`, `created_at`,
+  `status`), Pydantic schemas, router. `kind` is an enum —
+  `suggestion` / `bug` / `entry_problem`
+* Reuse what the submission path already has: the IP blacklist check, length
+  caps on every field, and `submitter_ip` capture through
+  `TRUST_PROXY_HEADERS`. Unauthenticated and public, so it goes in the same
+  nginx `limit_req_zone` as `POST /entries` (see blockers)
+* Email is optional and only used to reply. Say that next to the field, and
+  cover it in the privacy notice and the retention policy alongside
+  `submitter_ip`
+* Admin surface: a third view beside the review queue and conflicts —
+  `MessagesView` with filters by `kind` and `status`, a drawer showing the body
+  and the linked entry, and a resolve/dismiss action. `QueueView.jsx` and
+  `ConflictsView.jsx` are the pattern to copy
+* Frontend: a `/contact` page reachable from the footer, and a quiet "something
+  wrong with this sticker?" affordance on the entry view that opens the same
+  form pre-filled with `entry_id` and `kind=entry_problem`. HeroUI inputs, all
+  copy through `he.js` / `en.js`, thanks state modelled on
+  `contribute/Thanks.jsx` — genuine and unhurried, no counters or badges
+* Decide whether an admin gets notified. Simplest is nothing and someone checks
+  `/admin`; if a takedown request must not sit unseen, a single email or a
+  webhook per `entry_problem` is enough. Note it in the same place as "someone
+  on the review queue at launch"
+* Tests: `backend/tests/test_messages.py` for validation, blacklist rejection,
+  the optional `entry_id`, and the admin list/resolve endpoints
+* Spam: no third-party captcha (it is another dependency and another visitor-IP
+  leak). Rate limit, honeypot field, and a minimum body length first; revisit if
+  it actually gets abused
+
 ## Launch polish
 
 * Open Graph and Twitter card meta plus a share image — this will be shared in
@@ -89,6 +130,13 @@
 * React error boundary; a render crash currently gives a blank page
 * Accessibility pass on the real build: focus rings, alt text, modal focus trap,
   `prefers-reduced-motion`
+* Accessibility button — the site-wide control Israeli sites are expected to
+  carry (IS 5568): text sizing, link highlighting, motion off, and a link to an
+  accessibility statement naming the standard and a contact for problems. Note
+  that a high-contrast or "dark mode" toggle would run against the daylight
+  direction in `rules/frontend.md`; decide how that is handled before building
+  it. Distinct from the pass above, which is about the markup — this is the
+  visible control and the statement page
 * Test on real iOS and Android Safari/Chrome — HEIC upload, the camera picker,
   geolocation over HTTPS, and RTL layout
 * Add link to the github project for project contribution

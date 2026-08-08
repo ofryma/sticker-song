@@ -7,6 +7,7 @@
  */
 
 import { BASE, unwrap } from "./api.js";
+import { queryFor } from "./review.js";
 
 const STORAGE_KEY = "memorial.admin.token";
 
@@ -66,8 +67,14 @@ export async function checkSession(token) {
   return true;
 }
 
-export function listEntries({ token, status = "pending", limit = 50 }) {
-  const query = new URLSearchParams({ status, limit: String(limit) });
+/**
+ * One page of the queue: `{ items, total, limit, offset }`. Every filter and the
+ * sort are the database's work — see `queryFor` for what is sent.
+ */
+export function listEntries({ token, ...request }) {
+  const query = new URLSearchParams(
+    Object.entries(queryFor(request)).map(([key, value]) => [key, String(value)]),
+  );
   return authed(`/admin/entries?${query}`, { token });
 }
 
@@ -98,4 +105,29 @@ export function analyze({ token, id }) {
  */
 export function reviewImageUrl({ token, id, size = "thumb" }) {
   return `${BASE}/admin/entries/${id}/${size}?token=${encodeURIComponent(token)}`;
+}
+
+/** People the archive holds more than one sticker for: `{ items, total, ... }`. */
+export function conflicts({ token, query = "", limit = 25, offset = 0 }) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (query.trim()) params.set("q", query.trim());
+  return authed(`/admin/conflicts?${params}`, { token });
+}
+
+/** Every sticker held under one normalized name, with each one's votes. */
+export function conflictEntries({ token, name }) {
+  return authed(`/admin/conflicts/entries?name=${encodeURIComponent(name)}`, { token });
+}
+
+/**
+ * Keep one sticker and destroy the others. Permanent: rows and photographs
+ * alike. The losers are named explicitly, so nothing outside what the reviewer
+ * was looking at can be deleted.
+ */
+export function resolveConflict({ token, winnerId, loserIds }) {
+  return authed("/admin/conflicts/resolve", {
+    method: "POST",
+    token,
+    body: { winner_id: winnerId, loser_ids: loserIds },
+  });
 }

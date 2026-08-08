@@ -8,8 +8,8 @@ export function StepRail({ stepIndex, total, onJump }) {
   const { t, dict } = useI18n();
 
   return (
-    <div className="mb-14">
-      <p className="eyebrow mb-5">{t("contribute.stepOf", { n: stepIndex + 1, total })}</p>
+    <div className="mb-7 shrink-0 sm:mb-14">
+      <p className="eyebrow mb-3 sm:mb-5">{t("contribute.stepOf", { n: stepIndex + 1, total })}</p>
 
       <ol className="flex items-center gap-2 sm:gap-3">
         {dict.contribute.steps.map((label, index) => (

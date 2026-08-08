@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useCollageCycle, useWide } from "./useCollageCycle.js";
+import { useCollageCycle } from "./useCollageCycle.js";
+import { useWide } from "./useWide.js";
 
 const STEP = 2600;
 

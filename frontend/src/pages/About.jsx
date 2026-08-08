@@ -1,7 +1,7 @@
 import { useI18n } from "../i18n/index.jsx";
 import { Page, Section } from "../components/Section.jsx";
 import { Sprig } from "../components/Sprig.jsx";
-import { Action } from "../components/ui/Action.jsx";
+import { AddSticker } from "../components/ui/AddSticker.jsx";
 
 export default function About() {
   const { t, dict } = useI18n();
@@ -40,9 +40,7 @@ export default function About() {
 
       <Section className="mt-24 flex flex-col items-center gap-7 text-center">
         <Sprig size={34} />
-        <Action to="/contribute" size="lg">
-          {t("nav.contribute")}
-        </Action>
+        <AddSticker size="lg" />
       </Section>
     </Page>
   );

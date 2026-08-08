@@ -46,6 +46,73 @@ class MemorialEntryReview(MemorialEntryRead):
     submitter_ip: str | None
 
 
+class ReviewPage(BaseModel):
+    """One page of the review queue, with the size of the full result set.
+
+    `total` counts everything the filters match, not what is on this page, so the
+    review page can show how far the queue runs without loading it.
+    """
+
+    items: list[MemorialEntryReview]
+    total: int
+    limit: int
+    offset: int
+
+
+class ConflictGroup(BaseModel):
+    """One person carrying more than one sticker.
+
+    Grouped on the normalized name, which is what resolution keys off.
+    `similar_names` are near-matches that are *not* in this group — shown so a
+    reviewer can spot a spelling that split one person in two, never merged
+    automatically.
+    """
+
+    normalized_name: str
+    person_name: str
+    entry_count: int
+    vote_count: int
+    similar_names: list[str]
+    latest_at: datetime
+
+
+class ConflictGroupPage(BaseModel):
+    items: list[ConflictGroup]
+    total: int
+    limit: int
+    offset: int
+
+
+class ConflictEntry(MemorialEntryReview):
+    """One sticker inside a conflict, with the votes people gave its photograph."""
+
+    vote_count: int
+
+
+class ConflictDetail(BaseModel):
+    normalized_name: str
+    person_name: str
+    entries: list[ConflictEntry]
+    #: Highest-resolution image, votes breaking ties. A suggestion, not a choice.
+    suggested_best_id: uuid.UUID | None
+
+
+class ConflictResolution(BaseModel):
+    """Keep one sticker for this person and destroy the ones named here.
+
+    The losers are listed explicitly rather than inferred: nothing is deleted
+    that the reviewer was not looking at when they decided.
+    """
+
+    winner_id: uuid.UUID
+    loser_ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class ConflictResolved(BaseModel):
+    winner_id: uuid.UUID
+    deleted_entry_ids: list[uuid.UUID]
+
+
 class ReviewCounts(BaseModel):
     pending: int
     published: int

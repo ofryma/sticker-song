@@ -82,7 +82,7 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | GET    | `/health`              | Liveness                                       |
 | POST   | `/admin/login`         | `{username, password}` → a short-lived session token |
 | GET    | `/admin/session`       | Whether the caller's credential is still valid |
-| GET    | `/admin/entries`       | The review queue; `status` = `pending` (default) / `published` / `rejected` / `all` |
+| GET    | `/admin/entries`       | One page of the review queue: `{items, total, limit, offset}`. Filter with `status` = `pending` (default) / `published` / `rejected` / `all`, `q` (name or sticker text), `read` = `any` / `flag` / `ok` / `error` / `unread`, `added_within_days`; order with `sort` = `added` / `name` / `status` / `read` and `order` = `asc` / `desc`; page with `limit` (≤200) and `offset` |
 | GET    | `/admin/entries/counts`| How many entries sit in each state             |
 | POST   | `/admin/entries/{id}/publish` | Put the entry on the wall; optional `{note}` |
 | POST   | `/admin/entries/{id}/reject`  | Keep it out of the archive without deleting it |
@@ -90,6 +90,9 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | DELETE | `/admin/entries/{id}`  | Permanent takedown: row and both images, no undo |
 | GET    | `/admin/entries/{id}/image` | A draft's photo, whatever its state       |
 | GET    | `/admin/entries/{id}/thumb` | The same, small                           |
+| GET    | `/admin/conflicts`     | People the archive holds more than one sticker for, grouped on the normalized name; `q`, `limit`, `offset`. Near-matching names travel with a group as `similar_names` and are never merged into it |
+| GET    | `/admin/conflicts/entries` | Every sticker under one `name` (the normalized key), with each one's votes and a `suggested_best_id` |
+| POST   | `/admin/conflicts/resolve` | Keep `winner_id`, permanently remove `loser_ids`. Every loser must carry the winner's name |
 | POST   | `/admin/blacklist`     | `{ip, reason}` — bar an IP from submitting     |
 | GET    | `/admin/blacklist`     | List blocked IPs and reasons                   |
 | DELETE | `/admin/blacklist/{ip}`| Unban                                          |

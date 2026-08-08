@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -27,6 +28,11 @@ ENTRY_STATUSES = ("pending", "published", "rejected")
 
 class MemorialEntry(Base):
     __tablename__ = "memorial_entries"
+    # The review queue pages through one status in date order; the wall orders by
+    # date alone. Both would otherwise scan and sort the whole table.
+    __table_args__ = (
+        Index("ix_memorial_entries_status_created_at", "status", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -60,7 +66,7 @@ class MemorialEntry(Base):
     image_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     submitter_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.now(), index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

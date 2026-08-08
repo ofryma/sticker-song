@@ -10,7 +10,8 @@ function SearchIcon() {
   );
 }
 
-export function SearchField({ value, onChange }) {
+/** The one search input in the app; the wall and the review queue both use it. */
+export function SearchField({ value, onChange, label, placeholder, className = "w-full sm:w-80" }) {
   const { t } = useI18n();
 
   return (
@@ -20,13 +21,13 @@ export function SearchField({ value, onChange }) {
       onValueChange={onChange}
       isClearable
       onClear={() => onChange("")}
-      aria-label={t("wall.searchLabel")}
-      placeholder={t("wall.search")}
+      aria-label={label ?? t("wall.searchLabel")}
+      placeholder={placeholder ?? t("wall.search")}
       startContent={<SearchIcon />}
       radius="sm"
       variant="bordered"
       classNames={{
-        base: "w-full sm:w-80",
+        base: className,
         // text-base keeps iOS Safari from zooming the page on focus.
         input: "text-base sm:text-sm placeholder:text-ink-muted",
         inputWrapper:

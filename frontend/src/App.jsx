@@ -15,6 +15,11 @@ const NotFound = lazy(() => import("./pages/NotFound.jsx"));
 // The review queue: not linked from anywhere, and no visitor downloads it.
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 
+/* On a phone the wizard owns the bottom of the screen — its actions are pinned
+   there, above the nav bar — so a footer underneath them is only something to
+   scroll past. Wide screens have the room and keep it. */
+const NO_FOOTER_ON_PHONE = ["/contribute"];
+
 /** Every navigation starts at the top of the page, without a smooth scroll. */
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -26,6 +31,7 @@ function ScrollToTop() {
 
 export default function App() {
   const { t } = useI18n();
+  const { pathname } = useLocation();
 
   return (
     <>
@@ -52,7 +58,7 @@ export default function App() {
         </Suspense>
       </main>
 
-      <Footer />
+      <Footer className={NO_FOOTER_ON_PHONE.includes(pathname) ? "hidden sm:block" : ""} />
       <BottomNav />
     </>
   );

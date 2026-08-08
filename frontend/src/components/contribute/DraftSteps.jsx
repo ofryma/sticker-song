@@ -11,13 +11,17 @@ const FIELD = {
     "hover:border-tekhelet-light/50 group-data-[focus=true]:border-tekhelet-light",
 };
 
+/* A column, so a step that wants the room — the photograph — can take it and
+   the step still ends where the screen does. */
 function StepShell({ title, hint, children, blocker }) {
   return (
-    <div className="animate-rise" key={title}>
-      <h2 className="font-display text-2xl text-ink sm:text-3xl">{title}</h2>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-muted">{hint}</p>
-      <div className="mt-9">{children}</div>
-      {blocker && <p className="mt-4 animate-fade text-sm text-sun-deep">{blocker}</p>}
+    <div className="flex min-h-0 flex-1 flex-col animate-rise" key={title}>
+      <h2 className="shrink-0 font-display text-2xl text-ink sm:text-3xl">{title}</h2>
+      <p className="mt-2 max-w-lg shrink-0 text-sm leading-relaxed text-ink-muted sm:mt-3">
+        {hint}
+      </p>
+      <div className="mt-5 flex min-h-0 flex-1 flex-col sm:mt-9">{children}</div>
+      {blocker && <p className="mt-3 shrink-0 animate-fade text-sm text-sun-deep">{blocker}</p>}
     </div>
   );
 }
@@ -34,7 +38,7 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
         hint={t("contribute.photoHint")}
         blocker={message}
       >
-        <PhotoField file={draft.image} preview={preview} onPick={setImage} />
+        <PhotoField preview={preview} onPick={setImage} />
       </StepShell>
     );
   }

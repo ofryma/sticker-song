@@ -4,6 +4,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useI18n } from "../i18n/index.jsx";
 import { Sprig } from "./Sprig.jsx";
 import { Action } from "./ui/Action.jsx";
+import { AddSticker } from "./ui/AddSticker.jsx";
 
 const LINKS = [
   { to: "/", key: "nav.home", end: true },
@@ -84,9 +85,7 @@ export function Header() {
         </NavbarItem>
         {/* Adding is a bottom-bar tab on mobile, so it only appears here when wide. */}
         <NavbarItem className="hidden sm:flex">
-          <Action tone="leaf" size="sm" to="/contribute">
-            {t("nav.contribute")}
-          </Action>
+          <AddSticker size="sm" />
         </NavbarItem>
       </NavbarContent>
     </Navbar>

@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp, text } from "../test/render.jsx";
+import { draft, opened, page, signedIn } from "../test/reviewQueue.jsx";
 import Admin from "./Admin.jsx";
 
 vi.mock("../lib/admin.js", () => ({
@@ -19,38 +20,6 @@ vi.mock("../lib/admin.js", () => ({
   reviewImageUrl: ({ id, size = "thumb" }) => `/api/admin/entries/${id}/${size}?token=t`,
 }));
 const admin = await import("../lib/admin.js");
-
-const draft = (over = {}) => ({
-  id: "draft-1",
-  status: "pending",
-  person_name: "Some Name",
-  sticker_text: "Words from the sticker",
-  latitude: null,
-  longitude: null,
-  image_width: 1200,
-  image_height: 900,
-  created_at: "2026-08-01T10:00:00Z",
-  review_note: null,
-  llm_verdict: null,
-  llm_reason: null,
-  ...over,
-});
-
-/** Sign in and wait for the queue to settle. */
-async function signedIn(entries = [draft()]) {
-  admin.readToken.mockReturnValue("token-1");
-  admin.checkSession.mockResolvedValue(true);
-  admin.listEntries.mockResolvedValue(entries);
-  admin.counts.mockResolvedValue({
-    pending: entries.length,
-    published: 4,
-    rejected: 1,
-  });
-  const user = userEvent.setup();
-  renderApp(<Admin />);
-  await screen.findByRole("heading", { name: text("admin.title") });
-  return user;
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -70,7 +39,7 @@ describe("signing in", () => {
   it("shows the queue once the credentials are accepted", async () => {
     const user = userEvent.setup();
     admin.signIn.mockResolvedValue({ token: "token-1" });
-    admin.listEntries.mockResolvedValue([draft()]);
+    admin.listEntries.mockResolvedValue(page([draft()]));
     admin.counts.mockResolvedValue({ pending: 1, published: 0, rejected: 0 });
     renderApp(<Admin />);
 
@@ -110,13 +79,73 @@ describe("signing in", () => {
 });
 
 describe("the queue", () => {
-  it("shows each draft whole: photograph, name and transcription", async () => {
+  it("lists a row per draft: the name and what the sticker says", async () => {
     await signedIn();
 
     expect(screen.getByText("Some Name")).toBeInTheDocument();
     expect(screen.getByText("Words from the sticker")).toBeInTheDocument();
-    const photo = screen.getByAltText(text("entry.photo", { name: "Some Name" }));
+  });
+
+  it("leaves the photograph unfetched until a row is opened", async () => {
+    const user = await signedIn();
+
+    const alt = text("entry.photo", { name: "Some Name" });
+    expect(screen.queryByAltText(alt)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("row", { name: /Some Name/ }));
+
+    const photo = await screen.findByAltText(alt);
     expect(photo).toHaveAttribute("src", expect.stringContaining("/thumb"));
+  });
+
+  it("closes the drawer once the entry leaves the queue", async () => {
+    const user = await opened();
+    admin.publish.mockResolvedValue({});
+    admin.counts.mockResolvedValue({ pending: 0, published: 5, rejected: 1 });
+    admin.listEntries.mockResolvedValue(page([]));
+
+    await user.click(screen.getByRole("button", { name: text("admin.publish") }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByAltText(text("entry.photo", { name: "Some Name" })),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("asks the backend to search, once the typing settles", async () => {
+    const user = await signedIn();
+
+    await user.type(screen.getByLabelText(text("admin.searchLabel")), "dvora");
+
+    await waitFor(() =>
+      expect(admin.listEntries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ filters: expect.objectContaining({ query: "dvora" }) }),
+      ),
+    );
+    // Debounced: five keystrokes are not five requests.
+    expect(admin.listEntries.mock.calls.length).toBeLessThan(5);
+  });
+
+  it("says nothing matched when a filter empties the page", async () => {
+    const user = await signedIn();
+    admin.listEntries.mockResolvedValue(page([]));
+
+    await user.type(screen.getByLabelText(text("admin.searchLabel")), "nobody");
+
+    expect(await screen.findByText(text("admin.noResults"))).toBeInTheDocument();
+  });
+
+  it("asks for the ordering the reviewer clicks, and lets the database do it", async () => {
+    const user = await signedIn();
+
+    await user.click(screen.getByRole("columnheader", { name: text("admin.col.name") }));
+
+    await waitFor(() =>
+      expect(admin.listEntries).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: { column: "name", direction: expect.any(String) } }),
+      ),
+    );
   });
 
   it("counts what sits in each state", async () => {
@@ -147,97 +176,5 @@ describe("the queue", () => {
         expect.objectContaining({ status: "rejected" }),
       ),
     );
-  });
-});
-
-describe("deciding", () => {
-  it("publishes with the reviewer's note and drops the entry from the queue", async () => {
-    const user = await signedIn();
-    admin.publish.mockResolvedValue({});
-    admin.counts.mockResolvedValue({ pending: 0, published: 5, rejected: 1 });
-
-    await user.type(screen.getByLabelText(text("admin.noteLabel")), "checked the spelling");
-    await user.click(screen.getByRole("button", { name: text("admin.publish") }));
-
-    await waitFor(() =>
-      expect(admin.publish).toHaveBeenCalledWith({
-        token: "token-1",
-        id: "draft-1",
-        note: "checked the spelling",
-      }),
-    );
-    expect(await screen.findByText(text("admin.empty.pending"))).toBeInTheDocument();
-  });
-
-  it("holds an entry back without deleting it", async () => {
-    const user = await signedIn();
-    admin.reject.mockResolvedValue({});
-
-    await user.click(screen.getByRole("button", { name: text("admin.reject") }));
-
-    await waitFor(() => expect(admin.reject).toHaveBeenCalled());
-    expect(admin.remove).not.toHaveBeenCalled();
-  });
-
-  it("takes two steps to delete, and warns before the second", async () => {
-    const user = await signedIn();
-    admin.remove.mockResolvedValue(null);
-
-    await user.click(screen.getByRole("button", { name: text("admin.delete") }));
-
-    expect(screen.getByText(text("admin.deleteWarning"))).toBeInTheDocument();
-    expect(admin.remove).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: text("admin.deleteConfirm") }));
-
-    await waitFor(() =>
-      expect(admin.remove).toHaveBeenCalledWith({ token: "token-1", id: "draft-1" }),
-    );
-  });
-
-  it("lets the reviewer back out of a deletion", async () => {
-    const user = await signedIn();
-
-    await user.click(screen.getByRole("button", { name: text("admin.delete") }));
-    await user.click(screen.getByRole("button", { name: text("admin.cancel") }));
-
-    expect(screen.queryByText(text("admin.deleteWarning"))).not.toBeInTheDocument();
-    expect(admin.remove).not.toHaveBeenCalled();
-  });
-
-  it("returns to the sign-in form when the token dies mid-session", async () => {
-    const user = await signedIn();
-    const expired = new Error("unauthorized");
-    expired.code = "unauthorized";
-    admin.publish.mockRejectedValue(expired);
-
-    await user.click(screen.getByRole("button", { name: text("admin.publish") }));
-
-    expect(
-      await screen.findByRole("heading", { name: text("admin.signInTitle") }),
-    ).toBeInTheDocument();
-  });
-});
-
-describe("the LLM note", () => {
-  it("offers a read when none has been made", async () => {
-    const user = await signedIn();
-    admin.analyze.mockResolvedValue(draft({ llm_verdict: "ok", llm_reason: "reads fine" }));
-
-    expect(screen.getByText(text("admin.llm.none"))).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: text("admin.llm.run") }));
-
-    expect(await screen.findByText("reads fine")).toBeInTheDocument();
-  });
-
-  it("shows a flag as something to look at, next to the buttons and not instead", async () => {
-    await signedIn([draft({ llm_verdict: "flag", llm_reason: "looks like a placeholder" })]);
-
-    expect(screen.getByText(text("admin.llm.flag"))).toBeInTheDocument();
-    expect(screen.getByText("looks like a placeholder")).toBeInTheDocument();
-    expect(screen.getByText(text("admin.llm.advisory"))).toBeInTheDocument();
-    // The decision stays the reviewer's: both actions are still offered.
-    expect(screen.getByRole("button", { name: text("admin.publish") })).toBeEnabled();
-    expect(screen.getByRole("button", { name: text("admin.reject") })).toBeEnabled();
   });
 });

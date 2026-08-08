@@ -1,18 +1,19 @@
 import { useReducedMotion } from "framer-motion";
-import { useCollageCycle, useWide } from "../../hooks/useCollageCycle.js";
+import { useCollageCycle } from "../../hooks/useCollageCycle.js";
+import { useWide } from "../../hooks/useWide.js";
 import { slotsFor } from "./layout.js";
 import { CollageTile } from "./CollageTile.jsx";
 
 /**
  * The wall as a drifting collage: photographs fade in, hold, and give their
  * place to the next name in the archive, so over a minute of watching the whole
- * archive passes through. Overlapping and slightly rotated, the way stickers
- * actually accumulate on a pole.
+ * archive passes through. The stickers hang in an even lattice — straight, in
+ * line with each other, each at the proportions it was photographed at.
  *
  * It is ambient, not a way to find someone — that is what the search is for, and
  * cycling stops while a search is open so nothing moves under the reader.
  */
-export function Collage({ entries, onOpen, paused = false }) {
+export function Collage({ entries, onOpen, paused = false, full = false }) {
   const wide = useWide();
   const reduced = useReducedMotion();
   const slots = slotsFor(wide);
@@ -29,7 +30,12 @@ export function Collage({ entries, onOpen, paused = false }) {
 
   return (
     <div
-      className="relative -mx-4 h-[128vh] overflow-hidden sm:mx-0 sm:h-[92vh]"
+      className={[
+        "relative overflow-hidden",
+        // In the page the collage is a tall band that bleeds to the edges; given
+        // the whole screen it simply takes the room it is handed.
+        full ? "h-full w-full" : "-mx-4 h-[128vh] sm:mx-0 sm:h-[92vh]",
+      ].join(" ")}
       aria-hidden={paused ? "true" : undefined}
     >
       {/* Daylight pooling behind the collage, so the tiles sit in warm light. */}
@@ -53,11 +59,14 @@ export function Collage({ entries, onOpen, paused = false }) {
         );
       })}
 
-      {/* The collage dissolves into the page rather than ending on a hard edge. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-day to-transparent"
-      />
+      {/* In the page the collage dissolves into what follows rather than ending
+          on a hard edge. On the full screen there is nothing below to meet. */}
+      {!full && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-day to-transparent"
+        />
+      )}
     </div>
   );
 }

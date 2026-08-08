@@ -1,14 +1,9 @@
-import { useState } from "react";
 import { useI18n } from "../i18n/index.jsx";
 import { useEntries } from "../hooks/useEntries.js";
 import { Hero } from "../components/Hero.jsx";
 import { Page, Section, SectionHeading } from "../components/Section.jsx";
-import { WallGrid } from "../components/WallGrid.jsx";
-import { EntryDetail } from "../components/EntryDetail.jsx";
-import { Loading } from "../components/States.jsx";
-import { Action } from "../components/ui/Action.jsx";
+import { AddSticker } from "../components/ui/AddSticker.jsx";
 
-const PREVIEW = 8;
 // One wide page, so the hero can state a real total instead of a page size.
 const SCAN = 200;
 
@@ -30,7 +25,6 @@ function Steps() {
 export default function Home() {
   const { t } = useI18n();
   const { entries, status, exhausted } = useEntries({ limit: SCAN });
-  const [selected, setSelected] = useState(null);
 
   return (
     <>
@@ -39,30 +33,7 @@ export default function Home() {
       <Hero count={status === "ready" && exhausted ? entries.length : null} />
 
       <Page>
-        <Section className="pb-28">
-          <SectionHeading
-            kicker={t("home.kicker")}
-            title={t("home.latest")}
-            lead={t("home.latestLead")}
-            action={
-              <Action
-                tone="quiet"
-                size="sm"
-                to="/wall"
-                className="shrink-0 text-tekhelet hover:text-tekhelet-deep"
-              >
-                {t("home.viewAll")}
-              </Action>
-            }
-          />
-          {status === "loading" ? (
-            <Loading label={t("wall.loading")} />
-          ) : entries.length > 0 ? (
-            <WallGrid entries={entries.slice(0, PREVIEW)} onOpen={setSelected} />
-          ) : null}
-        </Section>
-
-        <Section className="pb-4">
+        <Section className="pb-4 pt-28">
           <SectionHeading
             kicker={t("contribute.kicker")}
             title={t("home.howTitle")}
@@ -70,14 +41,10 @@ export default function Home() {
           />
           <Steps />
           <div className="mt-12 flex justify-center">
-            <Action to="/contribute" size="lg">
-              {t("nav.contribute")}
-            </Action>
+            <AddSticker size="lg" />
           </div>
         </Section>
       </Page>
-
-      <EntryDetail entry={selected} onClose={() => setSelected(null)} />
     </>
   );
 }

@@ -58,7 +58,9 @@ describe("the wizard", () => {
     renderApp(<Contribute />);
 
     await user.upload(document.querySelector('input[type="file"]'), photo());
-    expect(screen.getByText("sticker.jpg")).toBeVisible();
+    // The photograph itself is the confirmation — no filename, no byte count.
+    expect(document.querySelector("figure img")).toHaveAttribute("src", "blob:test/1");
+    expect(screen.getByRole("button", { name: text("contribute.remove") })).toBeVisible();
 
     await user.click(screen.getByRole("button", NEXT));
     expect(screen.getByRole("heading", { name: text("contribute.nameTitle") })).toBeVisible();
@@ -172,6 +174,6 @@ describe("saving", () => {
     await user.click(await screen.findByRole("button", { name: text("contribute.thanksAnother") }));
 
     expect(screen.getByRole("heading", { name: text("contribute.photoTitle") })).toBeVisible();
-    expect(screen.queryByText("sticker.jpg")).toBeNull();
+    expect(document.querySelector("figure")).toBeNull();
   });
 });

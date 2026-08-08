@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "../i18n/index.jsx";
 import { useEntries } from "../hooks/useEntries.js";
 import { matchesQuery, pluralCount } from "../lib/format.js";
 import { Page } from "../components/Section.jsx";
 import { Collage } from "../components/collage/Collage.jsx";
 import { WallGrid } from "../components/WallGrid.jsx";
+import { WallStage } from "../components/WallStage.jsx";
 import { EntryDetail } from "../components/EntryDetail.jsx";
 import { EmptyWall, ErrorState, Loading, NoResults } from "../components/States.jsx";
 import { WallSearchBar } from "../components/WallSearchBar.jsx";
 import { Action } from "../components/ui/Action.jsx";
+import { requestFullscreen } from "../hooks/useFullscreen.js";
 
 export default function Wall() {
   const { t } = useI18n();
@@ -16,6 +18,14 @@ export default function Wall() {
   const [query, setQuery] = useState("");
   const [browsing, setBrowsing] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  // The collage, alone on the screen. Asking for the screen has to happen inside
+  // the press itself, or the browser treats it as unprompted and refuses.
+  const [staged, setStaged] = useState(false);
+  const openStage = () => {
+    requestFullscreen();
+    setStaged(true);
+  };
+  const closeStage = useCallback(() => setStaged(false), []);
 
   const searching = query.trim().length > 0;
   // Search and full browsing both replace the collage with a readable grid.
@@ -76,9 +86,14 @@ export default function Wall() {
               </Action>
             )
           ) : (
-            <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
-              {t("wall.browseAll")}
-            </Action>
+            <div className="flex shrink-0 items-center gap-1">
+              <Action tone="quiet" size="sm" onPress={openStage}>
+                {t("wall.fullscreen")}
+              </Action>
+              <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
+                {t("wall.browseAll")}
+              </Action>
+            </div>
           )}
         </div>
       )}
@@ -94,6 +109,14 @@ export default function Wall() {
       </header>
 
       {ready && <WallSearchBar value={query} onChange={setQuery} />}
+
+      {ready && staged && !listed && (
+        <WallStage
+          entries={entries}
+          onOpen={(entry) => setSelectedId(entry.id)}
+          onClose={closeStage}
+        />
+      )}
 
       <EntryDetail
         entry={index >= 0 ? visible[index] : null}

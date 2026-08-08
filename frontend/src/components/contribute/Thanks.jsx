@@ -13,29 +13,34 @@ export function Thanks({ entry, onAnother, onView, awaitingReview = false }) {
   const key = awaitingReview ? "contribute.thanksPending" : "contribute.thanks";
 
   return (
-    <div className="flex flex-col items-center gap-8 py-16 text-center animate-fade-slow">
-      <Sprig size={46} className="animate-unfurl" />
-      <div>
-        <h2 className="font-display text-3xl text-ink sm:text-4xl">{t(`${key}Title`)}</h2>
-        <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-ink-muted">
-          {t(`${key}Lead`, { name: entry.person_name })}
-        </p>
-        {awaitingReview && (
-          <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-            {t("contribute.thanksPendingHint")}
+    /* Centred in whatever height the page has, by auto margins rather than
+       `justify-center`: on a small phone the margins simply collapse, so a long
+       message is still reachable instead of being clipped at the top. */
+    <div className="flex min-h-0 flex-1 flex-col max-sm:overflow-y-auto">
+      <div className="m-auto flex flex-col items-center gap-6 py-8 text-center animate-fade-slow sm:gap-8 sm:py-16">
+        <Sprig size={40} sizeSm={46} className="animate-unfurl" />
+        <div>
+          <h2 className="font-display text-3xl text-ink sm:text-4xl">{t(`${key}Title`)}</h2>
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ink-muted sm:mt-5">
+            {t(`${key}Lead`, { name: entry.person_name })}
           </p>
-        )}
-      </div>
-      <hr className="rule-fade max-w-xs" />
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <Action onPress={onView}>{t("contribute.thanksView")}</Action>
-        <Action tone="ghost" onPress={onAnother}>
-          {t("contribute.thanksAnother")}
+          {awaitingReview && (
+            <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+              {t("contribute.thanksPendingHint")}
+            </p>
+          )}
+        </div>
+        <hr className="rule-fade max-w-xs" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+          <Action onPress={onView}>{t("contribute.thanksView")}</Action>
+          <Action tone="ghost" onPress={onAnother}>
+            {t("contribute.thanksAnother")}
+          </Action>
+        </div>
+        <Action tone="quiet" size="sm" to="/wall" className="text-xs tracking-label uppercase">
+          {t("nav.wall")}
         </Action>
       </div>
-      <Action tone="quiet" size="sm" to="/wall" className="text-xs tracking-label uppercase">
-        {t("nav.wall")}
-      </Action>
     </div>
   );
 }

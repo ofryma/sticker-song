@@ -21,6 +21,15 @@ export function formatHebrewDate(iso) {
   }
 }
 
+/** Compact date for a dense list, where the long form would crowd the row. */
+export function formatShortDate(iso, locale) {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function formatCoords(lat, lon) {
   if (lat == null || lon == null) return null;
   const ns = lat >= 0 ? "N" : "S";
@@ -38,6 +47,16 @@ export function pluralCount(t, base, n) {
   return t(`${base}Many`, { n });
 }
 
+/**
+ * A sticker's own proportions, width over height. Older records without measured
+ * dimensions fall back to a portrait shape, which is how most stickers are
+ * printed.
+ */
+export function ratioOf(entry) {
+  const { image_width: w, image_height: h } = entry;
+  return w > 0 && h > 0 ? w / h : 0.8;
+}
+
 /** Case-insensitive match across the two text fields we hold. */
 export function matchesQuery(entry, query) {
   const needle = query.trim().toLowerCase();
@@ -46,10 +65,4 @@ export function matchesQuery(entry, query) {
     entry.person_name.toLowerCase().includes(needle) ||
     entry.sticker_text.toLowerCase().includes(needle)
   );
-}
-
-export function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

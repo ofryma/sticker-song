@@ -5,11 +5,11 @@ import { useI18n } from "../i18n/index.jsx";
 // its source to the people using it. This link is that offer.
 export const SOURCE_URL = "https://github.com/ofryma/sticker-song";
 
-export function Footer() {
+export function Footer({ className = "" }) {
   const { t } = useI18n();
 
   return (
-    <footer className="mt-32 border-t border-day-line/60 py-14">
+    <footer className={`mt-32 border-t border-day-line/60 py-14 ${className}`}>
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 px-5 text-center sm:px-8">
         <p className="font-display text-xl tracking-wide text-ink">{t("footer.line")}</p>
         <hr className="rule-fade max-w-xs" />
