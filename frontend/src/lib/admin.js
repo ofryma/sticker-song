@@ -107,6 +107,34 @@ export function reviewImageUrl({ token, id, size = "thumb" }) {
   return `${BASE}/admin/entries/${id}/${size}?token=${encodeURIComponent(token)}`;
 }
 
+/** One page of what visitors wrote: `{ items, total, limit, offset }`. */
+export function messages({
+  token,
+  status = "open",
+  kind = "all",
+  query = "",
+  limit = 25,
+  offset = 0,
+}) {
+  const params = new URLSearchParams({
+    status,
+    kind,
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (query.trim()) params.set("q", query.trim());
+  return authed(`/admin/messages?${params}`, { token });
+}
+
+export function messageCounts(token) {
+  return authed("/admin/messages/counts", { token });
+}
+
+/** `action` is "resolve" or "dismiss". Idempotent, so a second press is harmless. */
+export function decideMessage({ token, id, action }) {
+  return authed(`/admin/messages/${id}/${action}`, { method: "POST", token });
+}
+
 /** People the archive holds more than one sticker for: `{ items, total, ... }`. */
 export function conflicts({ token, query = "", limit = 25, offset = 0 }) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });

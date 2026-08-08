@@ -79,6 +79,7 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | GET    | `/entries/{id}/thumb`  | The small copy, for grids and the collage      |
 | GET    | `/entries/{id}/duplicates` | Possible duplicates of an existing entry   |
 | POST   | `/entries/{id}/feedback`   | Vote "this is the best image for this person" |
+| POST   | `/messages`            | `{kind, body, entry_id?, reply_email?}` — write to whoever keeps the archive. `kind` is `suggestion` / `bug` / `entry_problem` |
 | GET    | `/health`              | Liveness                                       |
 | POST   | `/admin/login`         | `{username, password}` → a short-lived session token |
 | GET    | `/admin/session`       | Whether the caller's credential is still valid |
@@ -93,6 +94,10 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | GET    | `/admin/conflicts`     | People the archive holds more than one sticker for, grouped on the normalized name; `q`, `limit`, `offset`. Near-matching names travel with a group as `similar_names` and are never merged into it |
 | GET    | `/admin/conflicts/entries` | Every sticker under one `name` (the normalized key), with each one's votes and a `suggested_best_id` |
 | POST   | `/admin/conflicts/resolve` | Keep `winner_id`, permanently remove `loser_ids`. Every loser must carry the winner's name |
+| GET    | `/admin/messages`      | One page of what visitors wrote: `{items, total, limit, offset}`. Filter with `status` = `open` (default) / `resolved` / `dismissed` / `all`, `kind`, and `q` (the message text) |
+| GET    | `/admin/messages/counts` | How many messages sit in each state           |
+| POST   | `/admin/messages/{id}/resolve` | Somebody dealt with it                  |
+| POST   | `/admin/messages/{id}/dismiss` | Somebody read it and there was nothing to do |
 | POST   | `/admin/blacklist`     | `{ip, reason}` — bar an IP from submitting     |
 | GET    | `/admin/blacklist`     | List blocked IPs and reasons                   |
 | DELETE | `/admin/blacklist/{ip}`| Unban                                          |
@@ -173,7 +178,8 @@ name and image dimensions already match a row is skipped.
 
 ## Moderation and duplicates
 
-**IP blacklist.** `POST /entries` and `POST /entries/{id}/feedback` refuse
+**IP blacklist.** `POST /entries`, `POST /entries/{id}/feedback` and `POST
+/messages` refuse
 blacklisted IPs with `403` and the stored reason. Reads stay open. Manage the list
 through `/admin/blacklist` with either admin credential. With neither `ADMIN_TOKEN`
 nor `ADMIN_USERNAME`/`ADMIN_PASSWORD` set, `/admin` is disabled entirely (`503`) and
@@ -197,7 +203,26 @@ Deletion is deliberately limited to **exact** normalized-name matches. Fuzzy
 between "Yoni Cohen" and "Yonatan Cohen" is worth surfacing and nowhere near
 certain enough to justify destroying what may be a different person's entry.
 
-**Client IP.** Both features identify people by IP, and browser traffic arrives via
+**Contact messages.** `POST /messages` is the one way a visitor can write to us:
+a suggestion, something broken, or a problem with a particular sticker — a wrong
+name, a bad transcription, or a family asking for a takedown. It carries the same
+guards as a submission (the blacklist, a cap on every field, the IP recorded) plus
+a honeypot field and a minimum body length. `reply_email` is optional and used only
+to write back; neither it nor `submitter_ip` is ever sent to a browser. **Nothing
+notifies anyone** — an admin opens `/admin`, and the Messages tab carries the open
+count. If a takedown request must not sit unseen, that is the place to add a
+webhook.
+
+**Rate limit.** `nginx/conf.d/default.conf` puts `POST /api/entries` and
+`POST /api/messages` in one `limit_req_zone` at 10 requests a minute per IP with a
+burst of 3, answering `429` beyond that. A `map` on `$request_method` gives every
+non-POST request an empty key, which is nginx's way of exempting it, so reads are
+untouched. Note the zone keys on `$binary_remote_addr` — the address nginx itself
+sees, which behind a further upstream proxy is that proxy and not the visitor.
+There is deliberately no third-party captcha: it would be another dependency and
+would hand a visitor's IP to somebody else.
+
+**Client IP.** These features identify people by IP, and browser traffic arrives via
 a proxy, so the backend reads the leftmost `X-Forwarded-For` entry when
 `TRUST_PROXY_HEADERS=true` (the Vite dev proxy sets it via `xfwd: true`). That
 header is spoofable if the backend port is reachable directly — in production the
@@ -218,6 +243,14 @@ identity is also coarse: NAT shares one address between many people.
 
 `image_feedback`: `id`, `entry_id` (FK, `ON DELETE CASCADE`), `voter_ip`,
 `created_at`, unique on `(entry_id, voter_ip)`.
+
+`contact_messages`: `id`, `kind` (`suggestion`/`bug`/`entry_problem`), `body`,
+`entry_id` (FK, **`ON DELETE SET NULL`** — a message about a sticker has to
+outlive the sticker, because the likeliest reason it is gone is that the message
+asked for it), `reply_email` (nullable), `submitter_ip` (nullable), `status`
+(`open`/`resolved`/`dismissed`), `resolved_by`/`resolved_at` (nullable),
+`created_at`. Indexed on `kind`, `entry_id`, `status`, `created_at`, and
+`(status, created_at)` for the admin list.
 
 ## Layout
 
@@ -322,11 +355,99 @@ pulls the newest build of the branch; pin it to a `v*` tag or a commit sha for
 reproducible releases. `init-db` runs migrations and creates the bucket before
 the API starts, exactly as in development.
 
+### Continuous deployment
+
+`.github/workflows/deploy.yml` does the above from CI. Every merge to `main`
+runs the lint and test jobs, builds and pushes both images, then ships
+`docker-compose.prod.yml`, the `Makefile` and `nginx/conf.d/` to the server over
+SSH and runs `make prod-deploy` there. It deploys `sha-<commit>` rather than
+`main`, so the running version names one build and a rollback names another.
+
+To deploy or roll back by hand: **Actions → Deploy → Run workflow**, with an
+image tag (`main`, `v1.2.3`, `sha-<full commit sha>`).
+
+The server's `.env`, `nginx/certs/` and volumes are never touched by a deploy —
+only those three files are overwritten. The tag being run is recorded in
+`.image-tag` next to the compose file, which `make prod-*` reads as a second
+`--env-file`, so a later `make prod-up` on the box redeploys the same version
+rather than drifting back to `main`.
+
+One-time setup, under the repository's Settings → Secrets and variables →
+Actions (secrets on the `production` environment or the repository):
+
+| Secret               | Value                                                        |
+| -------------------- | ------------------------------------------------------------ |
+| `DEPLOY_HOST`        | server address                                                |
+| `DEPLOY_USER`        | ssh user, a member of the `docker` group                      |
+| `DEPLOY_SSH_KEY`     | private key whose public half is in that user's `authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | optional, `ssh-keyscan <host>` output; scanned live if unset  |
+
+and a `DEPLOY_PATH` repository variable if the checkout is not at
+`/opt/sticker-song`. The server needs docker (Compose v2.24+, which is where a
+second `--env-file` became legal), make and tar, `.env` filled in,
+and the directory to exist (or the deploy user able to create it); the workflow
+logs docker in to GHCR itself with a token scoped to the run, so no PAT has to
+live on the box.
+
 TLS is not enabled by default. Put `fullchain.pem` and `privkey.pem` in
 `nginx/certs/` and uncomment the two server blocks at the bottom of
 `nginx/conf.d/default.conf`; the `certbot_webroot` volume is mounted at
 `/var/www/certbot` for HTTP-01 renewals. Serving over HTTPS also restores the
 browser geolocation permission, which plain HTTP on a public address blocks.
+
+### Small server (1 GB RAM)
+
+`docker-compose.prod.yml` is sized for the smallest useful host — a 1 GB / 1 vCPU
+box such as a Linode Nanode. Measured idle, the stack sits at roughly:
+
+| Service  | Idle  | `mem_limit` |
+| -------- | ----- | ----------- |
+| postgres | 70 MB | 160m        |
+| minio    | 195 MB| 224m        |
+| backend  | ~150 MB | 288m      |
+| frontend | ~10 MB | 24m        |
+| nginx    | ~10 MB | 40m        |
+
+The limits total ~736 MB, leaving the rest of the machine to the kernel and
+dockerd. They are there so that a runaway container is restarted instead of the
+host being OOM-killed out from under everything; keep them on a larger box and
+raise the numbers via `.env` rather than deleting them.
+
+Three things are worth knowing before deploying on a machine this size:
+
+**Never build on the box.** The frontend's Vite build alone wants more than 1 GB.
+`make prod-up` only ever pulls, which is why it fits — but `make up` and
+`docker compose build` will OOM. Build in CI.
+
+**Uploads are the memory peak.** The 10 MB cap on an upload says nothing about
+the pixels behind it, since a photo of a flat sky compresses far below its size,
+and a decoded frame costs about 3 bytes a pixel. Two settings bound it:
+`MAX_IMAGE_MEGAPIXELS` (default 50, which covers any phone) rejects a frame on
+its header before the bitmap is allocated, and `IMAGE_CONCURRENCY` (default 2)
+gates how many decode at once — without it Starlette's forty-thread pool would
+happily hold forty bitmaps at the same moment. Worst case is therefore about
+`50 × 3 bytes × 2 ≈ 300 MB`, which is what `BACKEND_MEM` is set against.
+
+**Add swap.** Linode images ship with little or none, and swap is what turns a
+momentary spike into a slow request rather than a killed container:
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl -w vm.swappiness=10   # prefer RAM; swap is the safety net, not the plan
+```
+
+Disk is the other finite resource: 25 GB leaves roughly 20 GB for photos after
+the OS and images, or ~20k entries. Container logs are capped at 30 MB a service
+so an error loop cannot fill the disk on its own. Watch it with `df -h` and
+`docker system df`, and prune old images after a few deploys with
+`docker image prune -a`.
+
+If the box does start to struggle, the single biggest win is moving objects out
+of MinIO — it is the largest idle tenant at ~195 MB for a service doing nothing.
+`MINIO_ENDPOINT` / `MINIO_SECURE` / the access keys point at any S3-compatible
+service, so Cloudflare R2 or Backblaze B2 is a config change, not a rewrite.
 
 The MinIO console and the Postgres port are not published in production — reach
 them over an SSH tunnel when you need them. `/api/docs` is proxied but FastAPI

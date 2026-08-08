@@ -1,0 +1,58 @@
+/* Display preferences a visitor chooses in the accessibility panel. Everything
+   is driven by data attributes on <html>, set by `hooks/useA11y.js`, so no
+   component has to know a preference exists. The contrast palette itself lives
+   in `tokens.css`, with the rest of the colours. */
+
+/* Larger text. Sizes are in rem throughout, so the whole page grows with it. */
+html[data-a11y-text="1"] {
+  font-size: 112.5%;
+}
+
+html[data-a11y-text="2"] {
+  font-size: 125%;
+}
+
+/* Stronger contrast: the page stays parchment and daylight, the ink deepens.
+   The wash of light across the top goes, so text sits on a flat surface. */
+html[data-a11y-contrast="on"] body {
+  background-image: none;
+}
+
+html[data-a11y-contrast="on"] :focus-visible {
+  outline: 2px solid var(--color-tekhelet);
+  outline-offset: 2px;
+}
+
+/* Links marked as links, not only by colour. */
+html[data-a11y-links="on"] a,
+html[data-a11y-links="on"] a[href] {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+/* Stillness — the same treatment `prefers-reduced-motion` gets, asked for by
+   hand. Nothing drifts, breathes or slides. */
+html[data-a11y-stillness="on"] {
+  scroll-behavior: auto;
+}
+
+html[data-a11y-stillness="on"] *,
+html[data-a11y-stillness="on"] *::before,
+html[data-a11y-stillness="on"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* One plain, evenly spaced family everywhere, for anyone who finds the display
+   and book serifs hard to read. */
+html[data-a11y-font="on"] {
+  --font-display: var(--font-sans);
+  --font-serif: var(--font-sans);
+  letter-spacing: 0.01em;
+  word-spacing: 0.06em;
+}
+
+html[data-a11y-font="on"] * {
+  line-height: 1.75;
+}

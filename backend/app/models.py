@@ -103,3 +103,49 @@ class ImageFeedback(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+#: What a visitor is writing about. `entry_problem` is the one that matters most —
+#: a wrong name, a bad transcription, the wrong person, or a family asking for a
+#: sticker to come down.
+MESSAGE_KINDS = ("suggestion", "bug", "entry_problem")
+#: A message waits as `open` until somebody has dealt with it. `dismissed` is for
+#: what needed no action, so the two are told apart afterwards.
+MESSAGE_STATUSES = ("open", "resolved", "dismissed")
+
+
+class ContactMessage(Base):
+    """Something a visitor wrote to whoever keeps the archive."""
+
+    __tablename__ = "contact_messages"
+    # The admin list pages through one status in date order, exactly as the
+    # review queue does.
+    __table_args__ = (
+        Index("ix_contact_messages_status_created_at", "status", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    kind: Mapped[str] = mapped_column(String(16), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    # The sticker being written about, when there is one. SET NULL rather than
+    # CASCADE: a message about an entry has to outlive the entry, because the
+    # likeliest reason the entry is gone is that this message asked for it.
+    entry_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("memorial_entries.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    # Optional, and only ever used to write back.
+    reply_email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    submitter_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

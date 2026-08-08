@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, conflicts, entries, moderation
+from app.routers import admin, admin_messages, conflicts, entries, messages, moderation
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -19,10 +19,12 @@ app.add_middleware(
 )
 
 app.include_router(entries.router)
+app.include_router(messages.router)
 app.include_router(admin.login_router)
 app.include_router(admin.router)
 app.include_router(moderation.router)
 app.include_router(conflicts.router)
+app.include_router(admin_messages.router)
 
 
 @app.on_event("startup")

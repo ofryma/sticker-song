@@ -5,12 +5,15 @@ import { Header } from "./components/Header.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { BottomNav } from "./components/BottomNav.jsx";
 import { Loading } from "./components/States.jsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
+import { A11yButton } from "./components/a11y/A11yButton.jsx";
 import Home from "./pages/Home.jsx";
 
 // Split so a visitor who only reads the wall never downloads the upload wizard.
 const Wall = lazy(() => import("./pages/Wall.jsx"));
 const Contribute = lazy(() => import("./pages/Contribute.jsx"));
 const About = lazy(() => import("./pages/About.jsx"));
+const Contact = lazy(() => import("./pages/Contact.jsx"));
 const NotFound = lazy(() => import("./pages/NotFound.jsx"));
 // The review queue: not linked from anywhere, and no visitor downloads it.
 const Admin = lazy(() => import("./pages/Admin.jsx"));
@@ -46,20 +49,25 @@ export default function App() {
       <Header />
 
       <main id="main">
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/wall" element={<Wall />} />
-            <Route path="/contribute" element={<Contribute />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        {/* Keyed on the path: a crashed route clears itself when you navigate away. */}
+        <ErrorBoundary resetKey={pathname}>
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/wall" element={<Wall />} />
+              <Route path="/contribute" element={<Contribute />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
 
       <Footer className={NO_FOOTER_ON_PHONE.includes(pathname) ? "hidden sm:block" : ""} />
       <BottomNav />
+      <A11yButton />
     </>
   );
 }

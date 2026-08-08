@@ -6,7 +6,10 @@ orientation, drop every scrap of metadata (GPS included), and reduce animation t
 a still.
 """
 
+import asyncio
 import io
+import threading
+import time
 
 import pytest
 from PIL import Image
@@ -193,5 +196,73 @@ def test_heic_decoder_is_registered() -> None:
 # --- decompression bombs -----------------------------------------------------
 
 
-def test_pixel_limit_is_capped() -> None:
-    assert Image.MAX_IMAGE_PIXELS == 100_000_000
+def test_pixel_limit_follows_the_setting() -> None:
+    assert settings.max_image_megapixels * 1_000_000 == Image.MAX_IMAGE_PIXELS
+
+
+def test_an_oversized_frame_is_rejected_before_it_is_decoded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The frame is refused on its header, so nothing allocates the bitmap.
+
+    This is the memory ceiling for an upload: the 10 MB byte cap says nothing
+    about the pixels behind it, because a photo of a flat sky compresses far
+    below its size. A one-megapixel limit and a 1000x1000 image is the same test
+    as a 50 MP limit and a 50 MP image, without building the 50 MP file.
+    """
+    monkeypatch.setattr(settings, "max_image_megapixels", 1)
+
+    with pytest.raises(images.UnsupportedImage, match="over the 1 MP limit"):
+        images.normalize(factories.jpeg(size=(1100, 1000)))
+
+
+def test_a_frame_inside_the_limit_still_passes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "max_image_megapixels", 1)
+
+    result = images.normalize(factories.jpeg(size=(900, 1000)))
+
+    assert (result.width, result.height) == (900, 1000)
+
+
+async def test_the_decode_gate_bounds_how_many_run_at_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Starlette's threadpool is forty wide; the gate is what keeps memory bounded.
+
+    Without it forty simultaneous uploads would each hold a decoded bitmap at the
+    same moment, which is an OOM on a small host well before the last finishes.
+    """
+    monkeypatch.setattr(settings, "image_concurrency", 2)
+    monkeypatch.setattr(images, "_decode_gate", None)
+
+    live = 0
+    peak = 0
+    started = threading.Lock()
+
+    def slow_normalize(data: bytes) -> str:
+        nonlocal live, peak
+        with started:
+            live += 1
+            peak = max(peak, live)
+        time.sleep(0.05)
+        with started:
+            live -= 1
+        return "done"
+
+    monkeypatch.setattr(images, "normalize", slow_normalize)
+
+    results = await asyncio.gather(*(images.normalize_async(b"") for _ in range(10)))
+
+    assert results == ["done"] * 10
+    assert peak <= 2
+
+
+def test_a_decompression_bomb_becomes_a_rejection_not_a_crash() -> None:
+    """Pillow's own error descends from Exception, not OSError.
+
+    Left unnamed in the handler it escapes `normalize` and becomes a 500 rather
+    than the 400 the upload route turns an UnsupportedImage into.
+    """
+    assert issubclass(Image.DecompressionBombError, images._DECODE_ERRORS)

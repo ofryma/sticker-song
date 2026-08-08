@@ -112,6 +112,19 @@ export function EntryDetail({ entry, onClose, onPrev, onNext }) {
                     {leafAdded ? t("entry.leafAdded") : t("entry.leaf")}
                   </Action>
                 }
+                report={
+                  /* A link rather than a nested dialog: navigating unmounts this
+                     modal, and the contact page arrives already knowing which
+                     sticker was meant. */
+                  <Action
+                    tone="quiet"
+                    size="sm"
+                    to={`/contact?entry=${entry.id}&kind=entry_problem`}
+                    className="h-auto justify-start px-0 text-xs"
+                  >
+                    {t("entry.reportProblem")}
+                  </Action>
+                }
               />
             </div>
           </ModalBody>

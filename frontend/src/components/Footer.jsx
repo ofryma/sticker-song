@@ -24,6 +24,9 @@ export function Footer({ className = "" }) {
           <Link to="/about" className="transition-colors duration-700 hover:text-ink">
             {t("nav.about")}
           </Link>
+          <Link to="/contact" className="transition-colors duration-700 hover:text-ink">
+            {t("nav.contact")}
+          </Link>
           <a
             href={SOURCE_URL}
             target="_blank"

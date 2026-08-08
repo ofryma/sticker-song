@@ -182,7 +182,7 @@ async def create_entry(
     # The declared content type is only a hint; the format comes from the bytes,
     # and everything is stored re-encoded in one canonical format.
     try:
-        normalized = await run_in_threadpool(images.normalize, data)
+        normalized = await images.normalize_async(data)
     except images.UnsupportedImage as exc:
         logger.info("rejected upload: declared=%s error=%s", image.content_type, exc)
         raise HTTPException(
@@ -199,7 +199,7 @@ async def create_entry(
     # endpoint serves the full-size object instead.
     thumb_key: str | None = storage.build_thumb_key(object_key)
     try:
-        thumb = await run_in_threadpool(images.make_thumbnail, normalized.data)
+        thumb = await images.make_thumbnail_async(normalized.data)
         await run_in_threadpool(
             storage.upload_image, thumb_key, thumb.data, thumb.content_type
         )

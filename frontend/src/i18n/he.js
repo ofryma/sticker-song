@@ -1,4 +1,5 @@
 import admin from "./he.admin.js";
+import contact from "./he.contact.js";
 
 export default {
   meta: { name: "עברית", dir: "rtl", locale: "he-IL" },
@@ -13,8 +14,30 @@ export default {
     wall: "הקיר",
     contribute: "הוספת מדבקה",
     about: "על הפרויקט",
+    contact: "יצירת קשר",
     skip: "דלג לתוכן",
     language: "שינוי שפה",
+  },
+
+  a11y: {
+    open: "הגדרות תצוגה",
+    kicker: "הקריאה כאן",
+    title: "הגדרות תצוגה",
+    lead: "אפשר להתאים את העמוד כך שיהיה נוח לקרוא. כל שינוי נכנס לתוקף מיד.",
+    textSize: "גודל הטקסט",
+    textMark: "א",
+    textStep: ["טקסט רגיל", "טקסט גדול", "טקסט גדול מאוד"],
+    contrast: "ניגודיות גבוהה",
+    contrastHint: "דיו כהה יותר וקווים ברורים, על אותו נייר.",
+    links: "קו תחתון לקישורים",
+    linksHint: "מסמן כל קישור, ולא רק בצבע.",
+    stillness: "עמוד ללא תנועה",
+    stillnessHint: "עוצר את הקיר הנע ואת שאר התנועות בעמוד.",
+    plainFont: "גופן קריא",
+    plainFontHint: "גופן אחיד אחד, עם יותר רווח בין השורות.",
+    reset: "חזרה למקור",
+    done: "סיום",
+    storedHint: "ההגדרות נשמרות במכשיר שלכם. שום דבר לא נשלח לשום מקום.",
   },
 
   home: {
@@ -80,6 +103,7 @@ export default {
     leafAdded: "עלה נוסף",
     leafHint: "עלה אומר שעצרתם כאן וקראתם את השם. הוא נשמר במכשיר שלכם, ואינו נספר.",
     photo: "תמונת מדבקה לזכר {name}",
+    reportProblem: "משהו לא נכון במדבקה הזאת?",
   },
 
   contribute: {
@@ -201,10 +225,14 @@ export default {
     lead: "ייתכן שהקישור השתנה, או שנרשם בטעות. השמות נמצאים בקיר.",
   },
 
+  contact,
   admin,
   common: {
     retry: "ניסיון נוסף",
     error: "משהו נשבר בדרך.",
+    crashed: "לא הצלחנו להציג את החלק הזה של הדף.",
+    crashedLead: "שאר הארכיון נמצא כאן. אפשר לנסות שוב, או להתחיל מההתחלה.",
+    backHome: "חזרה להתחלה",
     loading: "טוען",
   },
 };

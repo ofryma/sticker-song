@@ -1,5 +1,6 @@
 import { useReducedMotion } from "framer-motion";
 import { useCollageCycle } from "../../hooks/useCollageCycle.js";
+import { usePrefetchThumbs } from "../../hooks/usePrefetchThumbs.js";
 import { useWide } from "../../hooks/useWide.js";
 import { slotsFor } from "./layout.js";
 import { CollageTile } from "./CollageTile.jsx";
@@ -12,19 +13,26 @@ import { CollageTile } from "./CollageTile.jsx";
  *
  * It is ambient, not a way to find someone — that is what the search is for, and
  * cycling stops while a search is open so nothing moves under the reader.
+ *
+ * Only what has been loaded is on the wall: as the cycle nears the end of the
+ * loaded entries it asks for the next page through `onNeedMore`, so an archive
+ * of any size is walked a page at a time rather than fetched whole.
  */
-export function Collage({ entries, onOpen, paused = false, full = false }) {
+export function Collage({ entries, onOpen, paused = false, full = false, onNeedMore }) {
   const wide = useWide();
   const reduced = useReducedMotion();
   const slots = slotsFor(wide);
   const slotCount = Math.min(slots.length, entries.length);
 
-  const { assigned, generation } = useCollageCycle({
+  const { assigned, generation, cursor } = useCollageCycle({
     slotCount,
     total: entries.length,
     // Reduced motion keeps a still collage: composed, but never moving.
     paused: paused || Boolean(reduced),
+    onNeedMore,
   });
+
+  usePrefetchThumbs(entries, cursor);
 
   if (entries.length === 0) return null;
 

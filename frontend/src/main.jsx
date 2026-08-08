@@ -4,6 +4,7 @@ import { BrowserRouter, useHref, useNavigate } from "react-router-dom";
 import { HeroUIProvider } from "@heroui/react";
 import { I18nProvider } from "./i18n/index.jsx";
 import App from "./App.jsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.jsx";
 import "./index.css";
 
 /** HeroUI needs the router's navigate so its links behave like <Link>. */
@@ -21,7 +22,9 @@ createRoot(document.getElementById("root")).render(
     <I18nProvider>
       <BrowserRouter>
         <Providers>
-          <App />
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
         </Providers>
       </BrowserRouter>
     </I18nProvider>

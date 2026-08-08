@@ -8,16 +8,20 @@ configured by ``IMAGE_FORMAT``. That keeps the bucket homogeneous, strips EXIF
 served rotated.
 """
 
+import asyncio
 import io
 from dataclasses import dataclass
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 
-# Guard against decompression bombs: a 100 MP frame is far past any real photo,
-# and we decode before we know anything about the file.
-Image.MAX_IMAGE_PIXELS = 100_000_000
+# Guard against decompression bombs, and against a merely large photo on a small
+# server: we decode before we know anything about the file, and a decoded frame
+# costs roughly 3 bytes a pixel. Pillow raises DecompressionBombError past this,
+# which arrives here as the UnsupportedImage every caller already handles.
+Image.MAX_IMAGE_PIXELS = settings.max_image_megapixels * 1_000_000
 
 try:  # iPhone photos arrive as HEIC; the plugin registers the decoder with PIL.
     import pillow_heif
@@ -44,6 +48,34 @@ TARGETS = {
 
 class UnsupportedImage(Exception):
     """The bytes are not a decodable image, or not one we can re-encode."""
+
+
+# Every decode path catches these. Pillow's DecompressionBombError descends
+# straight from Exception rather than from OSError, so it has to be named
+# explicitly or an oversized upload becomes a 500 instead of a rejection.
+_DECODE_ERRORS = (
+    UnidentifiedImageError,
+    Image.DecompressionBombError,
+    OSError,
+    ValueError,
+)
+
+
+def _check_pixels(image: Image.Image) -> None:
+    """Reject a frame too large to decode before any pixels are read.
+
+    ``Image.open`` parses the header only, so the dimensions are known while the
+    bitmap still costs nothing. Pillow's own guard is not enough on its own: it
+    only warns at ``MAX_IMAGE_PIXELS`` and does not raise until twice that, which
+    would let a 90 MP frame through a 50 MP limit.
+    """
+    width, height = image.size
+    limit = settings.max_image_megapixels * 1_000_000
+    if width * height > limit:
+        raise UnsupportedImage(
+            f"image is {width}x{height}, over the "
+            f"{settings.max_image_megapixels} MP limit"
+        )
 
 
 @dataclass(frozen=True)
@@ -123,12 +155,15 @@ def make_thumbnail(data: bytes) -> NormalizedImage:
     try:
         with Image.open(io.BytesIO(data)) as opened:
             source_format = opened.format or "UNKNOWN"
+            _check_pixels(opened)
             image = _flatten(opened, spec.supports_alpha)
             edge = settings.thumbnail_max_edge
             image.thumbnail((edge, edge), Image.Resampling.LANCZOS)
             encoded = _encode(image, spec)
             width, height = image.size
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except UnsupportedImage:
+        raise
+    except _DECODE_ERRORS as exc:
         raise UnsupportedImage(str(exc)) from exc
 
     return NormalizedImage(
@@ -141,6 +176,41 @@ def make_thumbnail(data: bytes) -> NormalizedImage:
     )
 
 
+def _gate() -> asyncio.Semaphore:
+    """The decode gate, created on the loop that first asks for it.
+
+    Built lazily rather than at import: a module-level semaphore is created
+    outside any running loop, and the test suite runs several loops in one
+    process. One gate per loop is exactly the scope we want.
+    """
+    global _decode_gate
+    loop = asyncio.get_running_loop()
+    if _decode_gate is None or _decode_gate[0] is not loop:
+        _decode_gate = (loop, asyncio.Semaphore(settings.image_concurrency))
+    return _decode_gate[1]
+
+
+_decode_gate: tuple[asyncio.AbstractEventLoop, asyncio.Semaphore] | None = None
+
+
+async def normalize_async(data: bytes) -> NormalizedImage:
+    """``normalize`` off the event loop, with at most IMAGE_CONCURRENCY at once.
+
+    Decoding is the memory peak of the whole application, and Starlette's
+    threadpool is forty threads wide — without this, forty simultaneous uploads
+    would each hold a bitmap and the host would OOM long before the last one
+    finished. The gate makes a burst queue instead.
+    """
+    async with _gate():
+        return await run_in_threadpool(normalize, data)
+
+
+async def make_thumbnail_async(data: bytes) -> NormalizedImage:
+    """``make_thumbnail`` off the event loop, behind the same gate."""
+    async with _gate():
+        return await run_in_threadpool(make_thumbnail, data)
+
+
 def normalize(data: bytes) -> NormalizedImage:
     """Decode any supported image and re-encode it into the canonical format.
 
@@ -150,6 +220,7 @@ def normalize(data: bytes) -> NormalizedImage:
     try:
         with Image.open(io.BytesIO(data)) as opened:
             source_format = opened.format or "UNKNOWN"
+            _check_pixels(opened)
             # Animated input keeps its first frame only; the archive shows stills.
             if getattr(opened, "n_frames", 1) > 1:
                 opened.seek(0)
@@ -159,7 +230,7 @@ def normalize(data: bytes) -> NormalizedImage:
             width, height = image.size
     except UnsupportedImage:
         raise
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except _DECODE_ERRORS as exc:
         raise UnsupportedImage(str(exc)) from exc
 
     return NormalizedImage(

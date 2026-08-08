@@ -1,7 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, IPvAnyAddress, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    IPvAnyAddress,
+    computed_field,
+    field_validator,
+)
 
 
 class MemorialEntryRead(BaseModel):
@@ -163,6 +171,90 @@ class FeedbackResponse(BaseModel):
     threshold: int
     resolved: bool
     deleted_entry_ids: list[uuid.UUID]
+
+
+MessageKind = Literal["suggestion", "bug", "entry_problem"]
+MessageStatus = Literal["open", "resolved", "dismissed"]
+
+#: Short enough that nobody labours over it, long enough that "hi" and a bot's
+#: single word do not get through. The contact page says so before anyone hits it.
+MESSAGE_MIN_BODY = 20
+MESSAGE_MAX_BODY = 4000
+
+
+class MessageCreate(BaseModel):
+    """Something a visitor wants to tell us."""
+
+    kind: MessageKind
+    body: str = Field(min_length=MESSAGE_MIN_BODY, max_length=MESSAGE_MAX_BODY)
+    #: The sticker being written about, when the message came from an entry.
+    entry_id: uuid.UUID | None = None
+    #: Optional, and only ever used to write back.
+    reply_email: str | None = Field(default=None, max_length=254)
+    #: Honeypot. A person never sees this field, so anything in it came from a
+    #: script. Never stored — see `routers.messages.create_message`.
+    website: str = Field(default="", max_length=254)
+
+    @field_validator("reply_email")
+    @classmethod
+    def _tidy_email(cls, value: str | None) -> str | None:
+        """A blank field means no address; a shape that cannot be an address is
+        an error worth telling the visitor about.
+
+        Deliberately not `EmailStr`: that pulls in `email-validator` as a runtime
+        dependency to catch typos we would find out about anyway when a reply
+        bounces. An address is optional here, and a wrong one costs one reply.
+        """
+        if value is None or not value.strip():
+            return None
+        address = value.strip()
+        local, separator, domain = address.partition("@")
+        if not separator or not local or "." not in domain or domain.endswith("."):
+            raise ValueError("That does not look like an email address")
+        return address
+
+
+class MessageAccepted(BaseModel):
+    """Deliberately thin: there is nothing to show a visitor but our thanks."""
+
+    id: uuid.UUID
+    kind: str
+
+
+class MessageRead(BaseModel):
+    """A message as an admin sees it.
+
+    `reply_email` and `submitter_ip` are not here on purpose. Neither is any use
+    on the admin page — a reply is written by hand, out of band — and neither
+    needs to travel to a browser to sit in a table.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: str
+    body: str
+    status: str
+    entry_id: uuid.UUID | None
+    #: Joined in for the drawer, so the linked sticker has a name and not an id.
+    entry_person_name: str | None = None
+    has_reply_email: bool = False
+    resolved_by: str | None
+    resolved_at: datetime | None
+    created_at: datetime
+
+
+class MessagePage(BaseModel):
+    items: list[MessageRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class MessageCounts(BaseModel):
+    open: int
+    resolved: int
+    dismissed: int
 
 
 class BlacklistCreate(BaseModel):

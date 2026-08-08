@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./a11y.css";
 
 /* HeroUI ships its own class names, so Tailwind has to scan its theme output. */
 @source "../node_modules/@heroui/theme/dist/**/*.{js,mjs}";
@@ -96,5 +97,14 @@
     .wizard-viewport {
       height: auto;
     }
+  }
+
+  /* The contact form's honeypot. Out of sight and out of the tab order, but
+     still a real field a script will fill in — `display: none` is the one thing
+     a bot checks for. */
+  .honeypot {
+    @apply absolute h-px w-px overflow-hidden opacity-0;
+    left: -9999px;
+    clip-path: inset(50%);
   }
 }

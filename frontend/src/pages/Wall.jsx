@@ -44,6 +44,9 @@ export default function Wall() {
   };
 
   const ready = status === "ready" && entries.length > 0;
+  // The collage pulls the next page itself as it reaches the end of the loaded
+  // entries; once the archive is exhausted there is nothing left to ask for.
+  const needMore = exhausted ? undefined : loadMore;
 
   return (
     // The images open the page; the words and the search sit beneath them.
@@ -54,7 +57,11 @@ export default function Wall() {
       {status === "ready" && entries.length === 0 && <EmptyWall />}
 
       {ready && !listed && (
-        <Collage entries={entries} onOpen={(entry) => setSelectedId(entry.id)} />
+        <Collage
+          entries={entries}
+          onOpen={(entry) => setSelectedId(entry.id)}
+          onNeedMore={needMore}
+        />
       )}
 
       {ready &&
@@ -115,6 +122,7 @@ export default function Wall() {
           entries={entries}
           onOpen={(entry) => setSelectedId(entry.id)}
           onClose={closeStage}
+          onNeedMore={needMore}
         />
       )}
 

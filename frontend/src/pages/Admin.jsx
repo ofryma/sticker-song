@@ -7,6 +7,7 @@ import { Loading } from "../components/States.jsx";
 import { SignInCard } from "../components/admin/SignInCard.jsx";
 import { QueueView } from "../components/admin/QueueView.jsx";
 import { ConflictsView } from "../components/admin/ConflictsView.jsx";
+import { MessagesView } from "../components/admin/MessagesView.jsx";
 import { Action } from "../components/ui/Action.jsx";
 
 /** The review pages. Not linked from anywhere; reachable only by knowing the path. */
@@ -31,8 +32,8 @@ export default function Admin() {
 }
 
 /**
- * Two jobs, kept apart: reading what has come in, and settling the people the
- * archive holds twice.
+ * Three jobs, kept apart: reading the submissions that have come in, settling
+ * the people the archive holds twice, and answering what visitors wrote.
  */
 function Review({ token, onExpired, onSignOut }) {
   const { t } = useI18n();
@@ -66,13 +67,24 @@ function Review({ token, onExpired, onSignOut }) {
       >
         <Tab key="queue" title={t("admin.mode.queue")} />
         <Tab key="conflicts" title={t("admin.mode.conflicts")} />
+        <Tab key="messages" title={t("admin.mode.messages")} />
       </Tabs>
 
-      {mode === "queue" ? (
-        <QueueView token={token} status={status} onStatusChange={setStatus} onExpired={onExpired} />
-      ) : (
-        <ConflictsView token={token} onExpired={onExpired} />
-      )}
+      {/* A lookup rather than nested ternaries, now that there are three. */}
+      {
+        {
+          queue: (
+            <QueueView
+              token={token}
+              status={status}
+              onStatusChange={setStatus}
+              onExpired={onExpired}
+            />
+          ),
+          conflicts: <ConflictsView token={token} onExpired={onExpired} />,
+          messages: <MessagesView token={token} onExpired={onExpired} />,
+        }[mode]
+      }
     </>
   );
 }

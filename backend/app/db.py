@@ -6,7 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 
-engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+# The pool is bounded on purpose. Postgres allocates per connection, so on a
+# small host the ceiling here has to leave room under the server's
+# max_connections for a migration and a psql session.
+engine = create_async_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+)
 SessionFactory = async_sessionmaker(engine, expire_on_commit=False)
 
 

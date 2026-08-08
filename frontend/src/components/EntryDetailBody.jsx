@@ -2,7 +2,15 @@ import { Link } from "@heroui/react";
 import { useI18n } from "../i18n/index.jsx";
 
 /** The written half of a record: the name, the transcription, and provenance. */
-export function EntryDetailBody({ entry, coords, dateLabel, hebrewDate, mapHref, gesture }) {
+export function EntryDetailBody({
+  entry,
+  coords,
+  dateLabel,
+  hebrewDate,
+  mapHref,
+  gesture,
+  report,
+}) {
   const { t } = useI18n();
 
   return (
@@ -52,6 +60,9 @@ export function EntryDetailBody({ entry, coords, dateLabel, hebrewDate, mapHref,
       <div className="mt-auto flex flex-col gap-2.5">
         {gesture}
         <p className="text-ink-muted max-w-xs text-xs leading-relaxed">{t("entry.leafHint")}</p>
+        {/* Quiet on purpose: a way to put something right, not an invitation to
+            find fault with a record somebody made. */}
+        {report}
       </div>
     </div>
   );

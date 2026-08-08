@@ -2,14 +2,7 @@ import { Input, Textarea } from "@heroui/react";
 import { useI18n } from "../../i18n/index.jsx";
 import { PhotoField } from "./PhotoField.jsx";
 import { LocationField } from "./LocationField.jsx";
-
-/* One place for field styling, so the wizard reads as a single form. */
-const FIELD = {
-  input: "text-base placeholder:text-ink-muted",
-  inputWrapper:
-    "border-day-line bg-day-soft/70 transition-colors duration-700 ease-calm " +
-    "hover:border-tekhelet-light/50 group-data-[focus=true]:border-tekhelet-light",
-};
+import { FIELD } from "../ui/field.js";
 
 /* A column, so a step that wants the room — the photograph — can take it and
    the step still ends where the screen does. */

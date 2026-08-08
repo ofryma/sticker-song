@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/stickers"
+    # Connections the pool keeps, and how many more it may open under load. The
+    # ceiling is the sum, and it has to stay under the server's max_connections
+    # with room left for a migration and a psql session.
+    db_pool_size: int = Field(default=5, ge=1, le=50)
+    db_max_overflow: int = Field(default=5, ge=0, le=50)
 
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
@@ -24,6 +29,15 @@ class Settings(BaseSettings):
     image_format: Literal["webp", "jpeg", "png"] = "webp"
     # Lossy encoder quality (webp/jpeg); ignored for png.
     image_quality: int = Field(default=88, ge=1, le=100)
+    # Largest frame we will decode. A decoded photo costs about 3 bytes a pixel
+    # before any copy, so this — not the 10 MB cap on the upload — is what bounds
+    # the memory one submission can take: JPEG compresses far too well for a byte
+    # limit to say anything about the pixels behind it. 50 MP covers any phone.
+    max_image_megapixels: int = Field(default=50, ge=1, le=500)
+    # Uploads decoded at the same time. Each one holds a full bitmap for as long
+    # as it takes to re-encode, so on a small host this is the difference between
+    # a slow second submission and an OOM kill.
+    image_concurrency: int = Field(default=2, ge=1, le=32)
 
     # Admin API. Empty means the admin endpoints are disabled entirely.
     admin_token: str = ""
@@ -49,7 +63,7 @@ class Settings(BaseSettings):
     image_cache_seconds: int = 60 * 60 * 24 * 365
 
     # Votes an image needs before it wins its duplicate group.
-    duplicate_vote_threshold: int = 3
+    duplicate_vote_threshold: int = 20
     # pg_trgm similarity above which two names are *suggested* as the same person.
     name_similarity_threshold: float = 0.4
 

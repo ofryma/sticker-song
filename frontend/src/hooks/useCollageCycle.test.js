@@ -60,6 +60,24 @@ describe("useCollageCycle", () => {
     expect(full.result.current.assigned).toEqual([0, 1, 2]);
   });
 
+  it("asks for the next page before the cursor runs out of loaded entries", () => {
+    const onNeedMore = vi.fn();
+    const { rerender } = renderHook((props) => useCollageCycle(props), {
+      initialProps: { slotCount: 3, total: 9, paused: false, onNeedMore },
+    });
+
+    // Three slots filled, cursor at 3 of 9: still plenty in hand.
+    expect(onNeedMore).not.toHaveBeenCalled();
+
+    tick(3);
+    expect(onNeedMore).toHaveBeenCalledTimes(1); // cursor 6, one screenful left
+
+    // The page arrives and the collage goes quiet again until it nears the end.
+    rerender({ slotCount: 3, total: 59, paused: false, onNeedMore });
+    tick(1);
+    expect(onNeedMore).toHaveBeenCalledTimes(1);
+  });
+
   it("starts the round over when the breakpoint changes the slot count", () => {
     const { result, rerender } = renderHook((props) => useCollageCycle(props), {
       initialProps: { slotCount: 3, total: 9, paused: false },

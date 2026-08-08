@@ -38,8 +38,13 @@ function advance(cycle, total) {
  *
  * Cursor and slot position live in the same state object as the assignments, so
  * a tick is one pure update and nothing has to be mutated on the side.
+ *
+ * `onNeedMore` is called as the cursor comes within a screenful of the end of
+ * what has been loaded, so the next page of the archive is fetched while the
+ * last of the current one is still on the wall — a large archive arrives a page
+ * at a time and the collage never has to wait for it.
  */
-export function useCollageCycle({ slotCount, total, paused, stepMs = 2600 }) {
+export function useCollageCycle({ slotCount, total, paused, stepMs = 2600, onNeedMore }) {
   const [cycle, setCycle] = useState(() => freshCycle(slotCount));
 
   // Slot count changes with the breakpoint; start over rather than patch. Done
@@ -61,5 +66,12 @@ export function useCollageCycle({ slotCount, total, paused, stepMs = 2600 }) {
   }, [paused, slotCount, total, stepMs]);
 
   const current = cycle.slotCount === slotCount ? cycle : freshCycle(slotCount);
-  return { assigned: current.assigned, generation: current.generation };
+
+  // Asked for once per cursor position: `onNeedMore` is free to decline, and
+  // the request repeats on the next tick if the archive did not grow.
+  useEffect(() => {
+    if (current.cursor >= total - slotCount) onNeedMore?.();
+  }, [current.cursor, slotCount, total, onNeedMore]);
+
+  return { assigned: current.assigned, generation: current.generation, cursor: current.cursor };
 }

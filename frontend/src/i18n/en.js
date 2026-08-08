@@ -1,4 +1,5 @@
 import admin from "./en.admin.js";
+import contact from "./en.contact.js";
 
 export default {
   meta: { name: "English", dir: "ltr", locale: "en-US" },
@@ -13,8 +14,30 @@ export default {
     wall: "The Wall",
     contribute: "Add a sticker",
     about: "About",
+    contact: "Contact",
     skip: "Skip to content",
     language: "Change language",
+  },
+
+  a11y: {
+    open: "Display settings",
+    kicker: "Reading here",
+    title: "Display settings",
+    lead: "Set the page up so it reads comfortably. Every change takes effect at once.",
+    textSize: "Text size",
+    textMark: "A",
+    textStep: ["Regular text", "Larger text", "Largest text"],
+    contrast: "Stronger contrast",
+    contrastHint: "Deeper ink and clearer lines, on the same parchment.",
+    links: "Underline links",
+    linksHint: "Marks every link, not only by its colour.",
+    stillness: "Still page",
+    stillnessHint: "Stops the drifting wall and every other movement.",
+    plainFont: "Plain typeface",
+    plainFontHint: "One evenly spaced font, with more room between the lines.",
+    reset: "Back to the original",
+    done: "Done",
+    storedHint: "The settings stay on your device. Nothing is sent anywhere.",
   },
 
   home: {
@@ -82,6 +105,7 @@ export default {
     leafHint:
       "A leaf says you stopped here and read their name. It stays on your device, and it is never counted.",
     photo: "Memorial sticker for {name}",
+    reportProblem: "Something wrong with this sticker?",
   },
 
   contribute: {
@@ -205,10 +229,14 @@ export default {
     lead: "The link may have changed, or been mistyped. The wall is where the names are.",
   },
 
+  contact,
   admin,
   common: {
     retry: "Try again",
     error: "Something broke on the way.",
+    crashed: "This part of the page could not be shown.",
+    crashedLead: "The rest of the archive is still here. Try again, or start from the beginning.",
+    backHome: "Back to the beginning",
     loading: "Loading",
   },
 };

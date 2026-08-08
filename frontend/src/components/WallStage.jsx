@@ -30,7 +30,7 @@ function keepFocus(stage, event) {
  * every photograph still there to be opened. Mounted only while it is open, so
  * leaving it hands the screen back and returns the page as it was.
  */
-export function WallStage({ entries, onOpen, onClose }) {
+export function WallStage({ entries, onOpen, onClose, onNeedMore }) {
   const { t } = useI18n();
   const stageRef = useRef(null);
 
@@ -75,7 +75,7 @@ export function WallStage({ entries, onOpen, onClose }) {
       </div>
 
       <div className="min-h-0 flex-1 px-2 pb-2 sm:px-4 sm:pb-4">
-        <Collage entries={entries} onOpen={onOpen} full />
+        <Collage entries={entries} onOpen={onOpen} onNeedMore={onNeedMore} full />
       </div>
     </div>
   );

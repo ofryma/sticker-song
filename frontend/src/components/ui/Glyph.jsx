@@ -9,6 +9,14 @@ const ICON = {
   rotateRight: ["M20.5 12a8.5 8.5 0 1 1-2.6-6.1l2.6 2.5", "M20.5 4v4.5H16"],
   /* Two halves of one picture facing away from the line they were folded on. */
   flip: ["M12 3.5v17", "M9 7.5 4 12l5 4.5z", "M15 7.5 20 12l-5 4.5z"],
+  /* The universal accessibility figure, drawn on the same line grid. */
+  access: [
+    "M12 3.1a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2",
+    "M4.9 8.7c4.7 1.5 9.5 1.5 14.2 0",
+    "M12 8.9v4.7",
+    "M12 13.6 9.3 20.7",
+    "M12 13.6l2.7 7.1",
+  ],
 };
 
 /** One icon, at whatever size the caller asks for. */

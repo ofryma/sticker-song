@@ -127,3 +127,23 @@
     }
   }
 }
+
+/* ── Stronger contrast, when a visitor asks for it in the accessibility panel.
+   Still daylight: the parchment surfaces do not move, the ink and the accents
+   deepen until every pair clears 7:1, and the hairlines become visible lines. */
+html[data-a11y-contrast="on"] {
+  --color-ink: #100e0a;
+  --color-ink-soft: #1b180f;
+  --color-ink-muted: #2c2718;
+  --color-ink-faint: #46402f;
+
+  --color-day-soft: #f8f3e8;
+  --color-day-warm: #f1e9d9;
+  --color-day-line: #8d8471;
+
+  --color-tekhelet: #002a8c;
+  --color-tekhelet-deep: #03204f;
+  --color-olive: #4b6a22;
+  --color-olive-deep: #33500f;
+  --color-sun-deep: #6b4708;
+}
