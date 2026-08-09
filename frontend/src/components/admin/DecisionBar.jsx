@@ -7,14 +7,20 @@ import { Action } from "../ui/Action.jsx";
  * The decision, and the note that is kept with it. Mount it with `key={entry.id}`
  * so a half-typed note never follows the reviewer to the next submission.
  */
-export function DecisionBar({ entry, busy, onAct }) {
+export function DecisionBar({ entry, busy, blocked = false, onAct }) {
   const { t } = useI18n();
   const [note, setNote] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const pending = entry.status === "pending";
+  // Deciding on an entry that is half-corrected would keep the version nobody
+  // meant, so while changes are waiting the decision waits with them.
+  const stop = busy || blocked;
 
   return (
     <div className="w-full">
+      {blocked && (
+        <p className="text-ink-muted animate-fade mb-3 text-xs">{t("admin.edit.decideAfter")}</p>
+      )}
       {pending && (
         <Textarea
           value={note}
@@ -39,6 +45,7 @@ export function DecisionBar({ entry, busy, onAct }) {
               tone="leaf"
               size="sm"
               isLoading={busy}
+              isDisabled={stop}
               onPress={() => onAct("publish", entry.id, note)}
             >
               {t("admin.publish")}
@@ -46,7 +53,7 @@ export function DecisionBar({ entry, busy, onAct }) {
             <Action
               tone="ghost"
               size="sm"
-              isDisabled={busy}
+              isDisabled={stop}
               onPress={() => onAct("reject", entry.id, note)}
             >
               {t("admin.reject")}
@@ -58,6 +65,7 @@ export function DecisionBar({ entry, busy, onAct }) {
             tone="leaf"
             size="sm"
             isLoading={busy}
+            isDisabled={stop}
             onPress={() => onAct("publish", entry.id, "")}
           >
             {t("admin.publishAnyway")}
@@ -67,7 +75,7 @@ export function DecisionBar({ entry, busy, onAct }) {
           <Action
             tone="ghost"
             size="sm"
-            isDisabled={busy}
+            isDisabled={stop}
             onPress={() => onAct("reject", entry.id, "")}
           >
             {t("admin.takeOffWall")}
@@ -83,6 +91,7 @@ export function DecisionBar({ entry, busy, onAct }) {
                 tone="quiet"
                 size="sm"
                 isLoading={busy}
+                isDisabled={stop}
                 onPress={() => onAct("delete", entry.id)}
                 className="text-sun-deep"
               >
@@ -93,7 +102,12 @@ export function DecisionBar({ entry, busy, onAct }) {
               </Action>
             </>
           ) : (
-            <Action tone="quiet" size="sm" onPress={() => setConfirmingDelete(true)}>
+            <Action
+              tone="quiet"
+              size="sm"
+              isDisabled={stop}
+              onPress={() => setConfirmingDelete(true)}
+            >
               {t("admin.delete")}
             </Action>
           )}

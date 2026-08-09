@@ -11,20 +11,34 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import case, func, or_, select
 
-from app import review
+from app import review, storage
 from app.admin_auth import require_admin
 from app.config import settings
 from app.db import SessionDep
 from app.models import MemorialEntry
+from app.names import normalize_person_name, tidy_person_name
 from app.routers.entries import (
     _get_entry_or_404,
     delete_entry_objects,
+    read_upload,
     serve_object,
+    store_image,
 )
 from app.schemas import (
+    EntryEdit,
     MemorialEntryReview,
     ReviewCounts,
     ReviewDecision,
@@ -174,6 +188,75 @@ async def _decide(
 @router.get("/{entry_id}", response_model=MemorialEntryReview)
 async def get_for_review(session: SessionDep, entry_id: uuid.UUID) -> MemorialEntry:
     return await _get_entry_or_404(session, entry_id)
+
+
+@router.patch("/{entry_id}", response_model=MemorialEntryReview)
+async def edit_entry(
+    session: SessionDep, entry_id: uuid.UUID, payload: EntryEdit
+) -> MemorialEntry:
+    """Correct what an entry says: the name, the transcription, the location, the
+    note kept with it.
+
+    A misread name or a mistyped word is the commonest thing wrong with a
+    submission, and holding the entry back over it loses the person rather than
+    the mistake. Only the keys actually sent are written, so a form that touched
+    one field cannot quietly blank another.
+    """
+    entry = await _get_entry_or_404(session, entry_id)
+    fields = payload.model_dump(exclude_unset=True)
+
+    if "person_name" in fields:
+        name = fields["person_name"]
+        entry.person_name = tidy_person_name(name)
+        # The grouping key follows the name, or a corrected spelling would leave
+        # the entry filed under the wrong person for duplicate detection.
+        entry.person_name_normalized = normalize_person_name(name)
+    if "sticker_text" in fields:
+        entry.sticker_text = fields["sticker_text"].strip()
+    if "latitude" in fields:
+        entry.latitude = fields["latitude"]
+    if "longitude" in fields:
+        entry.longitude = fields["longitude"]
+    if "review_note" in fields:
+        entry.review_note = (fields["review_note"] or "").strip() or None
+
+    await session.commit()
+    await session.refresh(entry)
+    logger.info("entry %s edited: %s", entry.id, ", ".join(sorted(fields)) or "nothing")
+    return entry
+
+
+@router.put("/{entry_id}/image", response_model=MemorialEntryReview)
+async def replace_entry_image(
+    session: SessionDep,
+    entry_id: uuid.UUID,
+    image: Annotated[UploadFile, File(description="The photograph to keep instead")],
+) -> MemorialEntry:
+    """Put a different photograph on an entry — straightened, or cropped to the
+    sticker, or simply a better frame of the same wall.
+
+    The replacement goes through the same normalization as a submission, and the
+    photograph it replaces is destroyed only once the new one is stored and the
+    row points at it: a failure here leaves the entry with the picture it had.
+    """
+    entry = await _get_entry_or_404(session, entry_id)
+    data = await read_upload(image)
+    object_key, thumb_key, normalized = await store_image(data)
+
+    previous = (entry.image_object_key, entry.thumb_object_key)
+    entry.image_object_key = object_key
+    entry.thumb_object_key = thumb_key
+    entry.image_width = normalized.width
+    entry.image_height = normalized.height
+    entry.image_bytes = len(normalized.data)
+    await session.commit()
+    await session.refresh(entry)
+
+    for key in previous:
+        if key and key not in (object_key, thumb_key):
+            await run_in_threadpool(storage.delete_image, key)
+    logger.info("entry %s image replaced: %s -> %s", entry.id, previous[0], object_key)
+    return entry
 
 
 @router.post("/{entry_id}/publish", response_model=MemorialEntryReview)

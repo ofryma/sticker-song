@@ -85,16 +85,37 @@ describe("the name lookup", () => {
     expect(screen.queryByRole("heading", { name: text("contribute.textTitle") })).toBeNull();
   });
 
-  it("frames a near match as a suggestion rather than the same person", async () => {
+  it("never stops over a near match — only exactly the same name", async () => {
     findNameMatches.mockResolvedValue(held({ ...existing, is_exact_match: false }));
+    const user = userEvent.setup();
+    renderApp(<Contribute />);
+
+    await reachTheName(user);
+    // Said on the step, because it is worth knowing…
+    expect(
+      await screen.findByText(text("nameMatch.similarOne"), {}, { timeout: 3000 }),
+    ).toBeVisible();
+
+    // …and the wizard goes straight on, because a near name is not a duplicate.
+    await user.click(screen.getByRole("button", NEXT));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: text("contribute.textTitle") })).toBeVisible(),
+    );
+  });
+
+  it("shows only the records carrying the same name, not the near ones", async () => {
+    findNameMatches.mockResolvedValue(
+      held(existing, { ...existing, id: "old-2", person_name: "Some Nam", is_exact_match: false }),
+    );
     const user = userEvent.setup();
     renderApp(<Contribute />);
 
     await reachTheName(user);
     await user.click(screen.getByRole("button", NEXT));
 
-    expect(await screen.findByText(text("nameMatch.leadSimilar"))).toBeVisible();
-    expect(screen.getByText(text("duplicates.similar"))).toBeVisible();
+    expect(await screen.findByText(text("nameMatch.lead"))).toBeVisible();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText(text("duplicates.similar"))).toBeNull();
   });
 
   it("lets the visitor keep what is here and upload nothing at all", async () => {

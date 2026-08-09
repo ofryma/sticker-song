@@ -192,10 +192,7 @@ export default {
     similarMany: "{n} names close to this one are already here.",
     kicker: "Already remembered",
     title: "{name} is already in the archive",
-    leadExact:
-      "Somebody brought this name here before you. Have a look at what is kept — if it is the same person and the same sticker, everything you came to add is already in the light.",
-    leadSimilar:
-      "These names are close to the one you typed. If one of them is the same person, their sticker is already here; if not, yours belongs beside them.",
+    lead: "Somebody brought this exact name here before you. Have a look at what is kept — if it is the same person and the same sticker, everything you came to add is already in the light.",
     keepTitle: "It is the same person, and this is the sticker",
     keepHint: "Nothing more to add. The record stays as it is, and your photograph stays with you.",
     keepAction: "Keep what is here",

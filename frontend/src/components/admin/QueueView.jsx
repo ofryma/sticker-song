@@ -83,6 +83,7 @@ export function QueueView({ token, status, onStatusChange, onExpired }) {
         busy={open ? queue.busyId === open.id : false}
         onClose={() => setOpenId(null)}
         onAct={decide}
+        onSave={queue.save}
         onReanalyze={queue.reanalyze}
       />
     </>

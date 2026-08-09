@@ -61,7 +61,7 @@ export default function Contribute() {
     );
   }
 
-  // The archive already remembers this person. Comparing what is here against
+  // The archive already holds this exact name. Comparing what is here against
   // what is in hand takes reading, so this page scrolls in the ordinary way.
   if (gate.screen === "deciding") {
     return (
@@ -69,7 +69,6 @@ export default function Contribute() {
         <NameMatches
           name={gate.name}
           matches={gate.matches}
-          hasExact={gate.hasExact}
           onKeep={gate.keep}
           onOther={gate.proceed}
           onContinue={gate.proceed}

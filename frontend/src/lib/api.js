@@ -93,9 +93,22 @@ export async function sendMessage({ kind, body, entryId = null, replyEmail = "",
   );
 }
 
+/**
+ * When the entry last changed, as a stamp an image URL can carry.
+ *
+ * The image endpoints are cached hard and keyed on the entry, so a photograph a
+ * reviewer replaces would otherwise stay in a visitor's browser for as long as
+ * the old one was allowed to live. The stamp changes with the row and the
+ * caching stays immutable, which is what keeps the wall off the network.
+ */
+function version(entry) {
+  const changed = Date.parse(entry.updated_at ?? "");
+  return Number.isNaN(changed) ? "" : `?v=${changed}`;
+}
+
 /** Absolute path for an entry's photo, ready for an <img src>. */
 export function imageUrl(entry) {
-  return `${BASE}${entry.image_url}`;
+  return `${BASE}${entry.image_url}${version(entry)}`;
 }
 
 /**
@@ -104,5 +117,5 @@ export function imageUrl(entry) {
  * thumbnail fall back to the full image server-side, so this is always safe.
  */
 export function thumbUrl(entry) {
-  return `${BASE}${entry.thumb_url ?? entry.image_url}`;
+  return `${BASE}${entry.thumb_url ?? entry.image_url}${version(entry)}`;
 }

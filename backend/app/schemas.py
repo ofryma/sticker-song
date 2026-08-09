@@ -127,6 +127,32 @@ class ReviewCounts(BaseModel):
     rejected: int
 
 
+class EntryEdit(BaseModel):
+    """A correction to an entry, made by whoever keeps the archive.
+
+    Every field is optional and only what was actually sent is written — the
+    difference between "leave the location alone" and "this entry has no
+    location" is whether the key is present, not whether it is null. A name is
+    re-tidied and re-normalized on the way in, exactly as on submission, so
+    duplicate detection keeps working after a spelling is corrected.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    person_name: str | None = Field(default=None, min_length=1, max_length=255)
+    sticker_text: str | None = Field(default=None, min_length=1)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    review_note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("person_name", "sticker_text")
+    @classmethod
+    def _not_only_whitespace(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("This cannot be blank")
+        return value
+
+
 class ReviewDecision(BaseModel):
     """Why a reviewer published or rejected. Optional, and kept on the entry."""
 

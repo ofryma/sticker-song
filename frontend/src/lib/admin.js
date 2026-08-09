@@ -32,14 +32,15 @@ export function signOut() {
   writeToken(null);
 }
 
-async function authed(path, { method = "GET", token, body } = {}) {
+async function authed(path, { method = "GET", token, body, form } = {}) {
   const response = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${token}`,
+      // A FormData body sets its own content type, boundary and all.
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: form ?? (body ? JSON.stringify(body) : undefined),
   });
   if (response.status === 401) {
     const expired = new Error("unauthorized");
@@ -90,6 +91,22 @@ export function reject({ token, id, note }) {
   return authed(`/admin/entries/${id}/reject`, { method: "POST", token, body: { note } });
 }
 
+/**
+ * Correct what an entry says. `patch` carries only the fields that changed —
+ * the backend writes exactly the keys it is sent, so an absent one is left
+ * alone and an explicit `null` clears it. Returns the entry as it now stands.
+ */
+export function updateEntry({ token, id, patch }) {
+  return authed(`/admin/entries/${id}`, { method: "PATCH", token, body: patch });
+}
+
+/** Put a different photograph on an entry; the one it replaces is destroyed. */
+export function replaceImage({ token, id, file }) {
+  const form = new FormData();
+  form.append("image", file);
+  return authed(`/admin/entries/${id}/image`, { method: "PUT", token, form });
+}
+
 /** Permanent: the row and both image objects, with no undo. */
 export function remove({ token, id }) {
   return authed(`/admin/entries/${id}`, { method: "DELETE", token });
@@ -102,9 +119,13 @@ export function analyze({ token, id }) {
 /**
  * A draft's photo. The token rides in the query string because an <img> tag
  * cannot send an Authorization header.
+ *
+ * `version` is whatever changes when the entry does — the photograph on an entry
+ * can be replaced, and the response is cached as though it never could be.
  */
-export function reviewImageUrl({ token, id, size = "thumb" }) {
-  return `${BASE}/admin/entries/${id}/${size}?token=${encodeURIComponent(token)}`;
+export function reviewImageUrl({ token, id, size = "thumb", version }) {
+  const stamp = version ? `&v=${encodeURIComponent(version)}` : "";
+  return `${BASE}/admin/entries/${id}/${size}?token=${encodeURIComponent(token)}${stamp}`;
 }
 
 /** One page of what visitors wrote: `{ items, total, limit, offset }`. */

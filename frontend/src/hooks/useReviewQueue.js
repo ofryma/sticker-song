@@ -105,6 +105,48 @@ export function useReviewQueue({ token, status, filters, sort, page, onExpired }
     [handle, reload, status, token],
   );
 
+  /**
+   * A correction: the changed fields, a replacement photograph, or both. The
+   * photograph goes first, so a failure there leaves the entry untouched rather
+   * than renamed around a picture that never arrived.
+   *
+   * The row is replaced where it sits rather than the page being pulled again:
+   * a reviewer who has just fixed a name is still reading that entry, and a
+   * refetch could reorder or filter it out from under them.
+   */
+  const save = useCallback(
+    async (id, { patch, file } = {}) => {
+      setBusyId(id);
+      try {
+        let saved = null;
+        if (file) saved = await admin.replaceImage({ token, id, file });
+        if (patch && Object.keys(patch).length > 0) {
+          saved = await admin.updateEntry({ token, id, patch });
+        }
+        if (saved !== null) {
+          setLoaded((current) =>
+            current === null
+              ? current
+              : {
+                  ...current,
+                  entries: current.entries.map((entry) => (entry.id === id ? saved : entry)),
+                },
+          );
+        }
+        return { ok: true };
+      } catch (cause) {
+        // A refused correction is about the fields in front of the reviewer, so
+        // it is answered beside them rather than by replacing the whole queue
+        // with an error — which is what `handle` does for a failed fetch.
+        if (cause?.code === "unauthorized") onExpired();
+        return { ok: false, error: cause };
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [onExpired, token],
+  );
+
   /** Re-run the LLM read; the note updates in place. */
   const reanalyze = useCallback(
     async (id) => {
@@ -138,6 +180,7 @@ export function useReviewQueue({ token, status, filters, sort, page, onExpired }
     busyId,
     reload,
     act,
+    save,
     reanalyze,
   };
 }

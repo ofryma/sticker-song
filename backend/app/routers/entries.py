@@ -175,17 +175,8 @@ def _suggest_best(
     return best_id
 
 
-@router.post("", response_model=EntryCreateResponse, status_code=status.HTTP_201_CREATED)
-async def create_entry(
-    session: SessionDep,
-    client_ip: AllowedIpDep,
-    background: BackgroundTasks,
-    image: Annotated[UploadFile, File(description="Photo of the sticker")],
-    person_name: Annotated[str, Form(min_length=1, max_length=255)],
-    sticker_text: Annotated[str, Form(min_length=1)],
-    latitude: Annotated[float | None, Form(ge=-90, le=90)] = None,
-    longitude: Annotated[float | None, Form(ge=-180, le=180)] = None,
-) -> EntryCreateResponse:
+async def read_upload(image: UploadFile) -> bytes:
+    """The bytes of an uploaded photograph, refused if empty or oversized."""
     data = await image.read()
     if not data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Uploaded image is empty")
@@ -193,13 +184,22 @@ async def create_entry(
         raise HTTPException(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Image larger than 10 MB"
         )
+    return data
 
+
+async def store_image(data: bytes) -> tuple[str, str | None, images.NormalizedImage]:
+    """Re-encode a photograph and put it in the bucket, thumbnail and all.
+
+    Shared by a visitor's submission and by a reviewer replacing the photograph
+    on an entry, so both end up with the same canonical bytes, the same stripped
+    metadata, and the same pair of objects.
+    """
     # The declared content type is only a hint; the format comes from the bytes,
     # and everything is stored re-encoded in one canonical format.
     try:
         normalized = await images.normalize_async(data)
     except images.UnsupportedImage as exc:
-        logger.info("rejected upload: declared=%s error=%s", image.content_type, exc)
+        logger.info("rejected upload: %s", exc)
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Uploaded file must be an image"
         ) from exc
@@ -230,6 +230,22 @@ async def create_entry(
         len(data),
         len(normalized.data),
     )
+    return object_key, thumb_key, normalized
+
+
+@router.post("", response_model=EntryCreateResponse, status_code=status.HTTP_201_CREATED)
+async def create_entry(
+    session: SessionDep,
+    client_ip: AllowedIpDep,
+    background: BackgroundTasks,
+    image: Annotated[UploadFile, File(description="Photo of the sticker")],
+    person_name: Annotated[str, Form(min_length=1, max_length=255)],
+    sticker_text: Annotated[str, Form(min_length=1)],
+    latitude: Annotated[float | None, Form(ge=-90, le=90)] = None,
+    longitude: Annotated[float | None, Form(ge=-180, le=180)] = None,
+) -> EntryCreateResponse:
+    data = await read_upload(image)
+    object_key, thumb_key, normalized = await store_image(data)
 
     entry = MemorialEntry(
         # Held as a draft: nothing reaches the wall without a person publishing it,

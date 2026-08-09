@@ -20,15 +20,16 @@ function Choice({ title, hint, label, tone, onPress }) {
 
 /**
  * Between the name and the rest of the wizard, when the archive already holds
- * a name like this one: the stickers that are here, and three honest ways on —
+ * exactly this name: the stickers that are here, and three honest ways on —
  * leave the archive as it is, carry on because this is somebody else, or add
  * this photograph alongside the one that is here.
  *
- * Only the first ends the submission. The other two go straight on with the
- * draft as it stands: a near match is a question, and answering it must never
- * cost somebody the photograph and the name they have already given.
+ * Exact names only. Two people do share a name, so even this is a question and
+ * not a verdict — and only the first way on ends the submission. The other two go
+ * straight on with the draft as it stands, because answering a question must
+ * never cost somebody the photograph and the name they have already given.
  */
-export function NameMatches({ name, matches, hasExact, onKeep, onOther, onContinue }) {
+export function NameMatches({ name, matches, onKeep, onOther, onContinue }) {
   const { t } = useI18n();
 
   return (
@@ -37,9 +38,7 @@ export function NameMatches({ name, matches, hasExact, onKeep, onOther, onContin
       <h2 className="font-display text-2xl text-ink sm:text-3xl">
         {t("nameMatch.title", { name })}
       </h2>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-muted">
-        {t(hasExact ? "nameMatch.leadExact" : "nameMatch.leadSimilar")}
-      </p>
+      <p className="mt-3 max-w-lg text-sm leading-relaxed text-ink-muted">{t("nameMatch.lead")}</p>
 
       <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         {matches.map((entry) => (
