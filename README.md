@@ -389,11 +389,64 @@ and the directory to exist (or the deploy user able to create it); the workflow
 logs docker in to GHCR itself with a token scoped to the run, so no PAT has to
 live on the box.
 
-TLS is not enabled by default. Put `fullchain.pem` and `privkey.pem` in
-`nginx/certs/` and uncomment the two server blocks at the bottom of
-`nginx/conf.d/default.conf`; the `certbot_webroot` volume is mounted at
-`/var/www/certbot` for HTTP-01 renewals. Serving over HTTPS also restores the
-browser geolocation permission, which plain HTTP on a public address blocks.
+### Domain and TLS
+
+The edge config is four files in `nginx/conf.d/`, and only `*.conf` is loaded:
+
+| File               | Role                                                        |
+| ------------------ | ----------------------------------------------------------- |
+| `default.conf`     | resolver, rate-limit zone, and the plain-HTTP default server |
+| `app.inc`          | the locations that serve the archive, included per server    |
+| `tls.conf.example` | the HTTPS servers — copy to `tls.conf` with the real domain  |
+| `tls-params.inc`   | certificate paths and protocol settings                      |
+
+`app.inc` exists so the HTTP and HTTPS servers cannot drift: an nginx server
+block inherits nothing from a sibling, so both `include` the same file.
+
+A fresh box serves plain HTTP on whatever address it has, which is what lets
+certbot answer an HTTP-01 challenge. To put a domain in front of it:
+
+1. **Point DNS at the server.** An `A` record for the apex and for `www`, both
+   the server's IP. Delete whatever parking or URL-redirect records the registrar
+   created, or they win over yours. Wait for `dig +short <domain>` to answer with
+   the right address before going further — a challenge against stale DNS fails
+   and counts against Let's Encrypt's issuance limit.
+2. **Issue the certificate**, on the server, with the stack running — certbot
+   writes the challenge into the `certbot_webroot` volume and the running nginx
+   answers it from `/.well-known/acme-challenge/`, so no port has to be freed:
+
+   ```bash
+   make prod-cert DOMAIN=example.org EMAIL=you@example.org
+   ```
+
+   certbot's tree lands in `./letsencrypt` (untracked; back it up alongside
+   `.env`), and the certificate is copied into `nginx/certs/`, which the compose
+   file mounts read-only. nginx reads plain files, never certbot's `live/`
+   symlinks.
+3. **Enable HTTPS** and set the origin the API allows:
+
+   ```bash
+   sed 's/example.org/<domain>/g' nginx/conf.d/tls.conf.example > nginx/conf.d/tls.conf
+   sed -i 's|^PUBLIC_ORIGIN=.*|PUBLIC_ORIGIN=https://<domain>|' .env
+   make prod-up                            # recreates backend too: CORS_ORIGINS changed
+   ```
+
+   Everything then lands on `https://<domain>`: HTTP for the domain redirects,
+   `www` redirects over TLS, and HSTS is sent for six months. The bare IP keeps
+   answering over plain HTTP through the default server, which is what an uptime
+   check on the address and future renewals use. `tls.conf` is gitignored and
+   lives only on the server, so a deploy — which ships `nginx/conf.d/` — adds
+   files without disturbing it.
+4. **Renew on a schedule.** A weekly root cron entry; certbot exits quietly
+   unless the certificate is within 30 days of expiry, and the target re-copies
+   and reloads nginx:
+
+   ```
+   17 4 * * 1 cd /opt/sticker-song && make prod-cert-renew DOMAIN=<domain> >> /var/log/certbot-renew.log 2>&1
+   ```
+
+Serving over HTTPS also restores the browser geolocation permission, which plain
+HTTP on a public address blocks.
 
 ### Small server (1 GB RAM)
 

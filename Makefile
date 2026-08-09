@@ -1,7 +1,8 @@
 .PHONY: up down logs build reset migration backend-shell seed \
         dev dev-infra dev-infra-down dev-backend dev-frontend \
         test test-backend test-frontend lint lint-backend lint-frontend check \
-        prod-pull prod-up prod-down prod-logs prod-deploy prod-health
+        prod-pull prod-up prod-down prod-logs prod-deploy prod-health \
+        prod-cert prod-cert-install prod-cert-renew
 
 # `.image-tag` holds the version the server runs (IMAGE_TAG=sha-...). The deploy
 # workflow writes it before calling prod-deploy; it is created on demand with
@@ -126,3 +127,44 @@ prod-down:
 
 prod-logs:
 	$(PROD) logs -f nginx backend
+
+# --- TLS certificates, on the server -----------------------------------------
+# Let's Encrypt over the webroot the running nginx already serves: certbot
+# writes the challenge into the shared certbot_webroot volume, nginx answers it
+# from /.well-known/acme-challenge/, and no port has to be freed. The DNS record
+# has to point here first — check with `dig +short <domain>` — or the challenge
+# fails and burns an issuance attempt against the rate limit.
+#
+# certbot keeps its own tree in ./letsencrypt (untracked, and worth backing up
+# alongside .env). nginx never reads it: the certificate is copied into
+# ./nginx/certs, which the compose file mounts read-only.
+CERT_WEBROOT_VOLUME ?= $(notdir $(CURDIR))_certbot_webroot
+CERTBOT := docker run --rm \
+  -v $(CURDIR)/letsencrypt:/etc/letsencrypt \
+  -v $(CERT_WEBROOT_VOLUME):/var/www/certbot \
+  certbot/certbot
+
+prod-cert:                 ## first certificate: make prod-cert DOMAIN=example.org EMAIL=you@example.org
+	@[ -n "$(DOMAIN)" ] && [ -n "$(EMAIL)" ] \
+	  || { echo "usage: make prod-cert DOMAIN=example.org EMAIL=you@example.org" >&2; exit 1; }
+	$(CERTBOT) certonly --webroot -w /var/www/certbot \
+	  -d $(DOMAIN) -d www.$(DOMAIN) \
+	  --email $(EMAIL) --agree-tos --no-eff-email
+	@$(MAKE) --no-print-directory prod-cert-install DOMAIN=$(DOMAIN)
+	@echo
+	@echo "Certificate installed. To serve it, enable the TLS server blocks:"
+	@echo "  sed 's/example.org/$(DOMAIN)/g' nginx/conf.d/tls.conf.example > nginx/conf.d/tls.conf"
+	@echo "  make prod-up"
+	@echo "and set PUBLIC_ORIGIN=https://$(DOMAIN) in .env first, so CORS matches."
+
+prod-cert-install:         ## copy the issued certificate into nginx/certs and reload nginx
+	@[ -n "$(DOMAIN)" ] || { echo "usage: make prod-cert-install DOMAIN=example.org" >&2; exit 1; }
+	install -m 644 letsencrypt/live/$(DOMAIN)/fullchain.pem nginx/certs/fullchain.pem
+	install -m 600 letsencrypt/live/$(DOMAIN)/privkey.pem   nginx/certs/privkey.pem
+	@# Nothing to reload before the first `make prod-up` with tls.conf in place.
+	-$(PROD) exec -T nginx nginx -s reload
+
+prod-cert-renew:           ## what cron runs weekly: renew if due, re-copy, reload
+	@[ -n "$(DOMAIN)" ] || { echo "usage: make prod-cert-renew DOMAIN=example.org" >&2; exit 1; }
+	$(CERTBOT) renew --webroot -w /var/www/certbot --quiet
+	@$(MAKE) --no-print-directory prod-cert-install DOMAIN=$(DOMAIN)
