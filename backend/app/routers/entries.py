@@ -15,7 +15,7 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,7 @@ from app.schemas import (
     EntryCreateResponse,
     FeedbackResponse,
     MemorialEntryRead,
+    NameMatchResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,17 +109,22 @@ async def _count_votes(session: AsyncSession, entry_id: uuid.UUID) -> int:
     )
 
 
-async def find_duplicate_candidates(
-    session: AsyncSession, entry: MemorialEntry
+async def candidates_for_name(
+    session: AsyncSession,
+    normalized: str,
+    exclude_id: uuid.UUID | None = None,
 ) -> list[DuplicateCandidate]:
-    """Other *published* entries that plausibly describe the same person.
+    """Published entries whose name plausibly means the same person.
 
     Exact normalized-name matches plus pg_trgm near-matches. The exact flag is
     what the resolution step keys off; fuzzy hits are shown to humans only.
     Drafts are excluded: a contributor comparing photographs must not be shown
     somebody else's unreviewed submission.
+
+    Keyed on the name alone rather than on a row, so the same matching answers
+    both callers: an entry that already exists, and a name a visitor is still
+    typing into the wizard.
     """
-    normalized = entry.person_name_normalized
     vote_count = (
         select(func.count(ImageFeedback.id))
         .where(ImageFeedback.entry_id == MemorialEntry.id)
@@ -129,7 +135,7 @@ async def find_duplicate_candidates(
 
     rows = await session.execute(
         select(MemorialEntry, vote_count, is_exact)
-        .where(MemorialEntry.id != entry.id)
+        .where(MemorialEntry.id != exclude_id if exclude_id else true())
         .where(MemorialEntry.status == "published")
         .where(or_(is_exact, similarity > settings.name_similarity_threshold))
         .order_by(is_exact.desc(), similarity.desc(), MemorialEntry.created_at.desc())
@@ -145,6 +151,15 @@ async def find_duplicate_candidates(
             DuplicateCandidate(**base, vote_count=votes, is_exact_match=exact)
         )
     return candidates
+
+
+async def find_duplicate_candidates(
+    session: AsyncSession, entry: MemorialEntry
+) -> list[DuplicateCandidate]:
+    """Everything but `entry` itself that may describe the same person."""
+    return await candidates_for_name(
+        session, entry.person_name_normalized, exclude_id=entry.id
+    )
 
 
 def _suggest_best(
@@ -264,6 +279,29 @@ async def list_entries(
         .offset(offset)
     )
     return list(result)
+
+
+@router.get("/matches", response_model=NameMatchResponse)
+async def find_name_matches(
+    session: SessionDep,
+    name: Annotated[str, Query(min_length=1, max_length=255)],
+) -> NameMatchResponse:
+    """Who the archive already remembers under this name.
+
+    Asked from the name step of the wizard, before anything is uploaded, so a
+    person can keep the sticker that is already here instead of adding a second
+    one. Published entries only, exactly as after a save — a draft awaiting a
+    reviewer is nobody else's business.
+
+    Declared above `/{entry_id}` so the literal path wins the match.
+    """
+    normalized = normalize_person_name(name)
+    matches = await candidates_for_name(session, normalized) if normalized else []
+    return NameMatchResponse(
+        person_name=tidy_person_name(name),
+        matches=matches,
+        has_exact_match=any(match.is_exact_match for match in matches),
+    )
 
 
 @router.get("/{entry_id}", response_model=MemorialEntryRead)

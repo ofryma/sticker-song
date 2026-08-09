@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useI18n } from "../i18n/index.jsx";
 import { useStickerDraft } from "../hooks/useStickerDraft.js";
+import { useNameGate } from "../hooks/useNameGate.js";
 import { StepRail } from "../components/contribute/StepRail.jsx";
 import { DraftReview, DraftStep } from "../components/contribute/DraftSteps.jsx";
+import { NameMatchNotice } from "../components/contribute/NameMatchNotice.jsx";
+import { MatchKept, NameMatches } from "../components/contribute/NameMatches.jsx";
 import { Thanks } from "../components/contribute/Thanks.jsx";
 import { DuplicateReview } from "../components/contribute/DuplicateReview.jsx";
 import { Action } from "../components/ui/Action.jsx";
@@ -17,7 +20,13 @@ const ONE_SCREEN = `wizard-viewport ${COLUMN}`;
 export default function Contribute() {
   const { t } = useI18n();
   const form = useStickerDraft();
+  const gate = useNameGate(form);
   const [dismissedDuplicates, setDismissedDuplicates] = useState(false);
+
+  const startAgain = () => {
+    setDismissedDuplicates(false);
+    gate.restart();
+  };
 
   if (form.state === "done") {
     // Only asked when the archive already holds this person and the new entry is
@@ -28,14 +37,7 @@ export default function Contribute() {
 
     return (
       <div className={comparing ? `${COLUMN} pb-16` : ONE_SCREEN}>
-        <Thanks
-          entry={form.saved}
-          awaitingReview={form.awaitingReview}
-          onAnother={() => {
-            setDismissedDuplicates(false);
-            form.reset();
-          }}
-        />
+        <Thanks entry={form.saved} awaitingReview={form.awaitingReview} onAnother={startAgain} />
         {comparing && (
           <DuplicateReview
             entry={form.saved}
@@ -44,6 +46,37 @@ export default function Contribute() {
             onSkip={() => setDismissedDuplicates(true)}
           />
         )}
+      </div>
+    );
+  }
+
+  // The upload was let go of in favour of the sticker already in the archive.
+  if (gate.screen === "kept") {
+    return (
+      <div className={ONE_SCREEN}>
+        <div className="flex min-h-0 flex-1 flex-col max-sm:overflow-y-auto">
+          <MatchKept name={gate.name} onRestart={startAgain} />
+        </div>
+      </div>
+    );
+  }
+
+  // The archive already remembers this person. Comparing what is here against
+  // what is in hand takes reading, so this page scrolls in the ordinary way.
+  if (gate.screen === "deciding") {
+    return (
+      <div className={`${COLUMN} pb-16`}>
+        <NameMatches
+          name={gate.name}
+          matches={gate.matches}
+          hasExact={gate.hasExact}
+          onKeep={gate.keep}
+          onOther={gate.proceed}
+          onContinue={gate.proceed}
+        />
+        <Action tone="quiet" size="sm" onPress={gate.close} className="mt-10 self-start">
+          {t("nameMatch.editName")}
+        </Action>
       </div>
     );
   }
@@ -71,7 +104,7 @@ export default function Contribute() {
         onSubmit={(event) => {
           event.preventDefault();
           if (form.isLast) form.submit();
-          else form.next();
+          else gate.advance();
         }}
       >
         {/* Everything above the actions. The step inside takes the whole region,
@@ -86,6 +119,7 @@ export default function Contribute() {
             blocker={form.blocker}
             set={form.set}
             setImage={form.setImage}
+            nameNotice={<NameMatchNotice {...gate.notice} />}
           />
 
           {form.isLast && <DraftReview draft={form.draft} preview={form.preview} />}
@@ -111,7 +145,10 @@ export default function Contribute() {
               {t("contribute.back")}
             </Action>
           )}
-          <Action type="submit" isLoading={saving} className="ms-auto max-sm:flex-1">
+          {/* The name step waits on the lookup before it advances, which is a
+              moment on a slow connection — the button says so rather than
+              looking as though the press was missed. */}
+          <Action type="submit" isLoading={saving || gate.asking} className="ms-auto max-sm:flex-1">
             {form.isLast
               ? saving
                 ? t("contribute.submitting")

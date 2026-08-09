@@ -74,6 +74,7 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | ------ | ---------------------- | ---------------------------------------------- |
 | POST   | `/entries`             | `multipart/form-data`: `image`, `person_name`, `sticker_text`, optional `latitude`/`longitude`. Creates a **draft** |
 | GET    | `/entries`             | The wall: published only, newest first; `limit` (≤200) and `offset` |
+| GET    | `/entries/matches`     | Published entries already held under `name` (exact and pg_trgm near matches), with `has_exact_match`. Read from the wizard's name step, before an upload |
 | GET    | `/entries/{id}`        | Single published entry                         |
 | GET    | `/entries/{id}/image`  | The full-size image out of MinIO               |
 | GET    | `/entries/{id}/thumb`  | The small copy, for grids and the collage      |
@@ -191,6 +192,18 @@ the dev default `devtoken`.
 entry returns `possible_duplicates` — exact normalized-name matches plus `pg_trgm`
 near-matches above `NAME_SIMILARITY_THRESHOLD` — with `suggested_best_id` pointing
 at the highest-resolution image, so the better photo is easy to spot.
+
+**Asked before the upload, too.** The wizard's name step calls `GET
+/entries/matches?name=…` — the same matching, keyed on the name rather than on a
+saved row — so a person finds out that the archive already remembers this name
+while there is still nothing to undo. If it holds somebody, the flow stops and
+offers three ways on: keep what is here and upload nothing, carry on because this
+is somebody else named alike, or add this photograph alongside the one that is
+here and let the vote below decide which stays. Only the first ends the
+submission — the other two continue with the draft untouched, and the same name
+is not asked about twice unless it is edited. There is also a way back to the
+name itself, for a spelling rather than a decision. The
+lookup is a courtesy and never a gate: a failed one lets the submission through.
 
 **Resolution by vote.** `POST /entries/{id}/feedback` means "this image is the best
 one for this person", one vote per IP per entry (a repeat is `409`). When an entry

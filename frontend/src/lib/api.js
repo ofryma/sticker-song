@@ -41,6 +41,16 @@ export async function createEntry({ image, personName, stickerText, latitude, lo
 }
 
 /**
+ * Who the archive already remembers under a name — asked from the name step of
+ * the wizard, before a photograph is uploaded, so a second record for the same
+ * person can be avoided rather than merged away afterwards.
+ */
+export async function findNameMatches(name) {
+  const query = new URLSearchParams({ name });
+  return unwrap(await fetch(`${BASE}/entries/matches?${query}`));
+}
+
+/**
  * Records the backend thinks may be the same person, plus which of the images
  * is highest resolution. Fuzzy hits are suggestions for a human to judge.
  */

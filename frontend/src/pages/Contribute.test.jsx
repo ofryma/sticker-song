@@ -7,9 +7,11 @@ import Contribute from "./Contribute.jsx";
 vi.mock("../lib/api.js", () => ({
   createEntry: vi.fn(),
   voteForImage: vi.fn(),
+  findNameMatches: vi.fn(),
   imageUrl: (entry) => `/api/entries/${entry.id}/image`,
+  thumbUrl: (entry) => `/api/entries/${entry.id}/thumb`,
 }));
-const { createEntry, voteForImage } = await import("../lib/api.js");
+const { createEntry, voteForImage, findNameMatches } = await import("../lib/api.js");
 
 const saved = { id: "new-1", person_name: "Some Name", sticker_text: "Words", image_url: "/x" };
 const photo = () => new File(["bytes"], "sticker.jpg", { type: "image/jpeg" });
@@ -33,6 +35,10 @@ async function fillWizard(user) {
 beforeEach(() => {
   createEntry.mockReset();
   voteForImage.mockReset();
+  // The name step asks the archive who it already holds; nobody, unless a test
+  // says otherwise. `Contribute.matches.test.jsx` covers the case where it does.
+  findNameMatches.mockReset();
+  findNameMatches.mockResolvedValue({ matches: [], has_exact_match: false });
 });
 
 describe("the wizard", () => {

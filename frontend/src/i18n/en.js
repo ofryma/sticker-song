@@ -184,6 +184,35 @@ export default {
     },
   },
 
+  nameMatch: {
+    checking: "Looking through the archive",
+    foundOne: "One sticker here already carries this name.",
+    foundMany: "{n} stickers here already carry this name.",
+    similarOne: "A name close to this one is already here.",
+    similarMany: "{n} names close to this one are already here.",
+    kicker: "Already remembered",
+    title: "{name} is already in the archive",
+    leadExact:
+      "Somebody brought this name here before you. Have a look at what is kept — if it is the same person and the same sticker, everything you came to add is already in the light.",
+    leadSimilar:
+      "These names are close to the one you typed. If one of them is the same person, their sticker is already here; if not, yours belongs beside them.",
+    keepTitle: "It is the same person, and this is the sticker",
+    keepHint: "Nothing more to add. The record stays as it is, and your photograph stays with you.",
+    keepAction: "Keep what is here",
+    otherTitle: "This is somebody else",
+    otherHint:
+      "A different person who happens to be named alike. Nothing here changes — carry on with the photograph and the name you have.",
+    otherAction: "Carry on — a different person",
+    continueTitle: "My photograph belongs here too",
+    continueHint:
+      "A clearer photograph, or a different sticker for the same person. Both are kept, and people choose the one that stays.",
+    continueAction: "Add mine as well",
+    editName: "Back to the name",
+    keptTitle: "Thank you for looking first",
+    keptLead:
+      "{name} is remembered here once, with the photograph that was already kept. Looking before adding is its own kind of care.",
+  },
+
   duplicates: {
     title: "This name is already here",
     lead: "We found other records that look like the same person. Which photograph is clearest? The one people choose is the one that stays.",

@@ -150,6 +150,19 @@ class DuplicateCandidate(MemorialEntryRead):
     is_exact_match: bool
 
 
+class NameMatchResponse(BaseModel):
+    """What the archive already holds under a name, looked up before an upload.
+
+    Ordered exactly like the duplicates of a saved entry — exact names first,
+    then the near ones. `has_exact_match` is the strong signal: a near match is
+    worth showing and never worth acting on by itself.
+    """
+
+    person_name: str
+    matches: list[DuplicateCandidate]
+    has_exact_match: bool
+
+
 class EntryCreateResponse(BaseModel):
     entry: MemorialEntryRead
     possible_duplicates: list[DuplicateCandidate]
