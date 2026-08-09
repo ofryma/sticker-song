@@ -6,7 +6,6 @@
 
 
 ## Improvments
-* Admin can edit records
 * Saving an identifier of the publisher of the entry so it could be moved to blacklist of needed and also allow the admin to do that from the admin page per entry.
 
 

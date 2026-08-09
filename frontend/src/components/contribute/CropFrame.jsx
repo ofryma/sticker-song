@@ -2,16 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "../../i18n/index.jsx";
 
 /* Corners and edges of a rectangle on screen. This is geometry, not reading
-   order, so it stays physical when the interface flips to Hebrew. */
+   order, so it stays physical when the interface flips to Hebrew. Each handle
+   sits centred on its point; the box around it is the part a finger has to
+   find, and it is far larger than the mark it carries. */
 const HANDLES = [
-  ["nw", "-top-1.5 -left-1.5 cursor-nwse-resize"],
-  ["n", "-top-1.5 left-1/2 -ml-1.5 cursor-ns-resize"],
-  ["ne", "-top-1.5 -right-1.5 cursor-nesw-resize"],
-  ["e", "top-1/2 -right-1.5 -mt-1.5 cursor-ew-resize"],
-  ["se", "-bottom-1.5 -right-1.5 cursor-nwse-resize"],
-  ["s", "-bottom-1.5 left-1/2 -ml-1.5 cursor-ns-resize"],
-  ["sw", "-bottom-1.5 -left-1.5 cursor-nesw-resize"],
-  ["w", "top-1/2 -left-1.5 -mt-1.5 cursor-ew-resize"],
+  // Corners sit above the edges: on a small crop the boxes overlap, and a
+  // corner is the harder thing to reach for.
+  ["nw", "z-10 top-0 left-0 cursor-nwse-resize"],
+  ["n", "top-0 left-1/2 cursor-ns-resize"],
+  ["ne", "z-10 top-0 left-full cursor-nesw-resize"],
+  ["e", "top-1/2 left-full cursor-ew-resize"],
+  ["se", "z-10 top-full left-full cursor-nwse-resize"],
+  ["s", "top-full left-1/2 cursor-ns-resize"],
+  ["sw", "z-10 top-full left-0 cursor-nesw-resize"],
+  ["w", "top-1/2 left-0 cursor-ew-resize"],
 ];
 
 const pct = (value) => `${value * 100}%`;
@@ -121,8 +125,10 @@ export function CropFrame({ src, frame, rotation, flipped, crop, box }) {
               key={handle}
               onPointerDown={box.begin(handle)}
               aria-hidden="true"
-              className={`absolute h-3 w-3 rounded-[2px] border border-ink/45 bg-day ${where}`}
-            />
+              className={`absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center sm:h-8 sm:w-8 ${where}`}
+            >
+              <span className="h-3.5 w-3.5 rounded-full border border-ink/45 bg-day" />
+            </span>
           ))}
         </div>
       </div>

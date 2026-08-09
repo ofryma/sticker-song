@@ -90,7 +90,9 @@ function Editor({ src, name, onApply, onClose }) {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {/* Turning the photograph and leaving with it are the same row of
+            controls — nothing sits a step further away than the rest. */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-day-line/70 pt-5 sm:gap-3">
           <Tool
             icon="rotateLeft"
             label={t("contribute.rotateLeft")}
@@ -107,21 +109,15 @@ function Editor({ src, name, onApply, onClose }) {
           <Action tone="quiet" size="sm" onPress={box.reset} isDisabled={!box.touched}>
             {t("contribute.cropReset")}
           </Action>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-4 border-t border-day-line/70 pt-5">
-          <Action tone="quiet" onPress={onClose}>
-            {t("contribute.cropCancel")}
-          </Action>
-          <Action
-            tone="primary"
-            className="ms-auto"
-            onPress={keep}
-            isDisabled={!frame}
-            isLoading={saving}
-          >
-            {t("contribute.cropApply")}
-          </Action>
+          <div className="ms-auto flex items-center gap-2 sm:gap-3">
+            <Action tone="quiet" size="sm" onPress={onClose}>
+              {t("contribute.cropCancel")}
+            </Action>
+            <Action tone="primary" size="sm" onPress={keep} isDisabled={!frame} isLoading={saving}>
+              {t("contribute.cropApply")}
+            </Action>
+          </div>
         </div>
 
         {failed && frame && (
