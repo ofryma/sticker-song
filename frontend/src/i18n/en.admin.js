@@ -106,6 +106,7 @@ export default {
   signIn: "Sign in",
   signInFailed: "That username and password did not match.",
   signOut: "Sign out",
+  version: "Version",
   username: "Username",
   password: "Password",
   loading: "Loading submissions",

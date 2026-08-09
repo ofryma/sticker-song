@@ -1,7 +1,7 @@
 .PHONY: up down logs build reset migration backend-shell seed \
         dev dev-infra dev-infra-down dev-backend dev-frontend \
         test test-backend test-frontend lint lint-backend lint-frontend check \
-        prod-pull prod-up prod-down prod-logs prod-deploy prod-health \
+        prod-pull prod-up prod-down prod-logs prod-deploy prod-health prod-version \
         prod-cert prod-cert-install prod-cert-renew
 
 # `.image-tag` holds the version the server runs (IMAGE_TAG=sha-...). The deploy
@@ -121,6 +121,11 @@ prod-health:               ## block until the API answers, or fail after ~90s
 	done; \
 	echo "backend did not become healthy" >&2; \
 	$(PROD) ps; $(PROD) logs --tail=80 backend init-db >&2; exit 1
+
+prod-version:              ## print the version the running stack reports
+	@$(PROD) exec -T backend python -c \
+	  'import json, urllib.request; \
+	   print(json.load(urllib.request.urlopen("http://localhost:8000/health"))["version"])'
 
 prod-down:
 	$(PROD) down

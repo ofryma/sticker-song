@@ -174,7 +174,6 @@ export default {
     thanksPendingLead:
       "The sticker is kept, and {name} will be on the wall once someone has read it through. Every record is looked over by a person first, so what goes up is whole and worthy of them.",
     thanksPendingHint: "Nothing more is needed from you.",
-    thanksView: "See the record",
     thanksAnother: "Document another sticker",
     errorTitle: "Saving failed",
     errorRetry: "Try sending again",

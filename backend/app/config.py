@@ -10,6 +10,12 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # Which build this is. Baked into the image at build time by CI, which reads
+    # the last v* git tag and advances it, so the running container can answer
+    # the question without anyone matching commit shas by eye. The default is
+    # what a local run reports, and it is deliberately not a real version.
+    app_version: str = "0.0.0-dev"
+
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/stickers"
     # Connections the pool keeps, and how many more it may open under load. The
     # ceiling is the sum, and it has to stay under the server's max_connections

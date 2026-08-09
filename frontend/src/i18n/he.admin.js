@@ -106,6 +106,7 @@ export default {
   signIn: "כניסה",
   signInFailed: "שם המשתמש והסיסמה אינם תואמים.",
   signOut: "יציאה",
+  version: "גרסה",
   username: "שם משתמש",
   password: "סיסמה",
   loading: "העדויות נטענות",

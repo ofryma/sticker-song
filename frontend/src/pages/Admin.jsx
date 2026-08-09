@@ -8,6 +8,7 @@ import { SignInCard } from "../components/admin/SignInCard.jsx";
 import { QueueView } from "../components/admin/QueueView.jsx";
 import { ConflictsView } from "../components/admin/ConflictsView.jsx";
 import { MessagesView } from "../components/admin/MessagesView.jsx";
+import { Version } from "../components/admin/Version.jsx";
 import { Action } from "../components/ui/Action.jsx";
 
 /** The review pages. Not linked from anywhere; reachable only by knowing the path. */
@@ -47,9 +48,14 @@ function Review({ token, onExpired, onSignOut }) {
           <p className="eyebrow mb-3">{t("admin.kicker")}</p>
           <h1 className="font-display text-ink text-3xl sm:text-4xl">{t("admin.title")}</h1>
         </div>
-        <Action tone="quiet" size="sm" onPress={onSignOut}>
-          {t("admin.signOut")}
-        </Action>
+        {/* Which build is running, beside the way out — the two things you want
+            when something looks wrong and you are about to report it. */}
+        <div className="flex items-center gap-4">
+          <Version />
+          <Action tone="quiet" size="sm" onPress={onSignOut}>
+            {t("admin.signOut")}
+          </Action>
+        </div>
       </header>
 
       <Tabs

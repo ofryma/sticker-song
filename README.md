@@ -80,7 +80,7 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | GET    | `/entries/{id}/duplicates` | Possible duplicates of an existing entry   |
 | POST   | `/entries/{id}/feedback`   | Vote "this is the best image for this person" |
 | POST   | `/messages`            | `{kind, body, entry_id?, reply_email?}` — write to whoever keeps the archive. `kind` is `suggestion` / `bug` / `entry_problem` |
-| GET    | `/health`              | Liveness                                       |
+| GET    | `/health`              | Liveness, and the version of the running build |
 | POST   | `/admin/login`         | `{username, password}` → a short-lived session token |
 | GET    | `/admin/session`       | Whether the caller's credential is still valid |
 | GET    | `/admin/entries`       | One page of the review queue: `{items, total, limit, offset}`. Filter with `status` = `pending` (default) / `published` / `rejected` / `all`, `q` (name or sticker text), `read` = `any` / `flag` / `ok` / `error` / `unread`, `added_within_days`; order with `sort` = `added` / `name` / `status` / `read` and `order` = `asc` / `desc`; page with `limit` (≤200) and `offset` |
@@ -365,7 +365,37 @@ SSH and runs `make prod-deploy` there. It deploys `sha-<commit>` rather than
 `main`, so the running version names one build and a rollback names another.
 
 To deploy or roll back by hand: **Actions → Deploy → Run workflow**, with an
-image tag (`main`, `v1.2.3`, `sha-<full commit sha>`).
+image tag (`main`, `1.2.3`, `sha-<full commit sha>`).
+
+### Versions
+
+Every merge to `main` takes the next **patch** number. There is no version in a
+file to edit or conflict on: git tags are the record, and CI reads the last `v*`
+tag, advances it, tags the commit, and bakes the number into the backend image as
+`APP_VERSION`.
+
+To advance the **minor** or **major** number instead, start the run by hand —
+**Actions → CI → Run workflow**, on `main`, and pick `minor` or `major` from the
+*bump* dropdown. That run builds, tags and deploys exactly as a merge does, so
+asking for a bigger number is one click rather than a bump followed by a deploy.
+
+Because the number is baked in rather than passed at run time, the running
+container can be asked which build it is, and it answers truthfully even after a
+rollback:
+
+- `GET /health` → `{"status": "ok", "version": "1.4.2"}`
+- the **review page** shows it beside the sign-out link
+- `make prod-version` on the server prints it alone
+
+That last one is what the deploy itself checks: after the stack comes back
+healthy it compares the running version against the one it meant to ship, which
+is the only step that would catch a pull that quietly resolved to the old image.
+An image built by hand reports `0.0.0-dev`, which is not a version anyone has to
+wonder about.
+
+Tags are pushed with the run's own `GITHUB_TOKEN`. GitHub deliberately starts no
+workflow runs from that token, which is what stops CI's tag from re-triggering CI
+through its own `tags: ["v*"]` filter.
 
 The server's `.env`, `nginx/certs/` and volumes are never touched by a deploy —
 only those three files are overwritten. The tag being run is recorded in

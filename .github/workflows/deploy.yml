@@ -24,10 +24,14 @@ on:
         description: Image tag to deploy
         type: string
         required: true
+      app_version:
+        description: Version the image should report, checked after it starts
+        type: string
+        required: false
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to deploy (main, v1.2.3, sha-<full sha>)"
+        description: "Image tag to deploy (main, 1.2.3, sha-<full sha>)"
         type: string
         required: true
         default: main
@@ -139,6 +143,22 @@ jobs:
           set -euo pipefail
           ssh production "cd '$DEPLOY_PATH' && make prod-health"
 
+      # The version is baked into the image, so asking the running container for
+      # it is what proves the deploy replaced anything at all — a pull that
+      # silently resolved to the old digest would pass every check above this one.
+      - name: Confirm the running version
+        if: inputs.app_version != ''
+        env:
+          EXPECTED: ${{ inputs.app_version }}
+        run: |
+          set -euo pipefail
+          running=$(ssh production "cd '$DEPLOY_PATH' && make --no-print-directory prod-version")
+          echo "expected $EXPECTED, running $running"
+          [ "$running" = "$EXPECTED" ] || {
+            echo "::error::the stack is serving $running, not $EXPECTED"
+            exit 1
+          }
+
       # The token above dies with this run, and a dead token in the server's
       # docker config is worse than no token at all: the registry answers
       # "denied" instead of falling back to anonymous, so every later
@@ -154,6 +174,7 @@ jobs:
           {
             echo "### Deploy \`$IMAGE_TAG\`"
             echo
+            echo "- version: \`${{ inputs.app_version || 'not given' }}\`"
             echo "- host: \`$DEPLOY_HOST\`"
             echo "- path: \`$DEPLOY_PATH\`"
             echo "- result: ${{ job.status }}"
