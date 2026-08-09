@@ -9,10 +9,14 @@ const ICONS = {
   about: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 10v7M12 7.2v.2",
 };
 
+/* Every tab reads the same. Adding a sticker used to be tinted olive whether or
+   not it was the page you were on, which made the nav look as though it were
+   answering a question nobody had asked; olive means chosen here, and the active
+   mark already says which page that is. */
 const TABS = [
   { to: "/", key: "nav.home", icon: "home", end: true },
   { to: "/wall", key: "nav.wall", icon: "wall" },
-  { to: "/contribute", key: "nav.contribute", icon: "add", accent: true },
+  { to: "/contribute", key: "nav.contribute", icon: "add" },
   { to: "/about", key: "nav.about", icon: "about" },
 ];
 
@@ -38,13 +42,7 @@ export function BottomNav() {
                 [
                   "flex min-h-[3.75rem] flex-col items-center justify-center gap-1.5 px-1 py-2",
                   "transition-colors duration-700 ease-calm",
-                  isActive
-                    ? tab.accent
-                      ? "text-olive-deep"
-                      : "text-ink"
-                    : tab.accent
-                      ? "text-olive/80"
-                      : "text-ink-muted",
+                  isActive ? "text-ink" : "text-ink-muted",
                 ].join(" ")
               }
             >

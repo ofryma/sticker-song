@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useI18n } from "../i18n/index.jsx";
 import { useContactMessage } from "../hooks/useContactMessage.js";
+import { useReliableTap } from "../hooks/useReliableTap.js";
 import { ContactForm, KINDS } from "../components/contact/ContactForm.jsx";
 import { ContactThanks } from "../components/contact/ContactThanks.jsx";
 import { Action } from "../components/ui/Action.jsx";
@@ -38,6 +39,10 @@ export default function Contact() {
       live = false;
     };
   }, [entryId]);
+
+  // The keyboard closes as a thumb comes down on Send, the page reflows, and the
+  // tap would otherwise be lost between the two. See the hook.
+  const tap = useReliableTap(form.submit);
 
   if (form.state === "done") {
     return (
@@ -92,7 +97,7 @@ export default function Contact() {
         )}
 
         <div className="mt-12 flex border-t border-day-line/70 pt-8">
-          <Action type="submit" isLoading={sending} className="ms-auto max-sm:flex-1">
+          <Action type="submit" isLoading={sending} className="ms-auto max-sm:flex-1" {...tap}>
             {sending
               ? t("contact.sending")
               : form.state === "error"
