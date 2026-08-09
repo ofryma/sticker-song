@@ -35,6 +35,9 @@ export function Footer({ className = "" }) {
           >
             {t("footer.source")}
           </a>
+          <Link to="/admin" className="transition-colors duration-700 hover:text-ink">
+            {t("footer.admin")}
+          </Link>
         </nav>
       </div>
     </footer>

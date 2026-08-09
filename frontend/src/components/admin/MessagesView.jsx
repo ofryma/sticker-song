@@ -31,6 +31,16 @@ export function MessagesView({ token, onExpired }) {
 
   // Every change of what is being looked at starts again at the first page.
   const change = (setter) => (value) => (setter(value), setPage(0));
+
+  // Deciding a message carries the drawer on to the one below it, so a run of
+  // waiting messages can be worked through without going back to the list. The
+  // last one on the page has nowhere to go, and closes.
+  const decide = async (id, action) => {
+    const at = messages.items.findIndex((message) => message.id === id);
+    if (!(await messages.decide(id, action))) return;
+    setOpenId(messages.items[at + 1]?.id ?? null);
+  };
+
   const countOf = (key) =>
     !messages.tally
       ? null
@@ -133,7 +143,7 @@ export function MessagesView({ token, onExpired }) {
         message={open}
         busy={messages.busy}
         onClose={() => setOpenId(null)}
-        onDecide={messages.decide}
+        onDecide={decide}
       />
     </>
   );
