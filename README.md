@@ -74,6 +74,7 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | ------ | ---------------------- | ---------------------------------------------- |
 | POST   | `/entries`             | `multipart/form-data`: `image`, `person_name`, `sticker_text`, optional `latitude`/`longitude`. Creates a **draft** |
 | GET    | `/entries`             | The wall: published only, newest first; `limit` (≤200) and `offset` |
+| GET    | `/entries/matches`     | Published entries already held under `name` (exact and pg_trgm near matches), with `has_exact_match`. Read from the wizard's name step, before an upload |
 | GET    | `/entries/{id}`        | Single published entry                         |
 | GET    | `/entries/{id}/image`  | The full-size image out of MinIO               |
 | GET    | `/entries/{id}/thumb`  | The small copy, for grids and the collage      |
@@ -88,6 +89,8 @@ Re-running `init-db` is safe: migrations and bucket creation are both idempotent
 | POST   | `/admin/entries/{id}/publish` | Put the entry on the wall; optional `{note}` |
 | POST   | `/admin/entries/{id}/reject`  | Keep it out of the archive without deleting it |
 | POST   | `/admin/entries/{id}/analyze` | Re-run the LLM read on the entry        |
+| PATCH  | `/admin/entries/{id}`  | Correct what the entry says — any of `person_name`, `sticker_text`, `latitude`, `longitude`, `review_note`. Only the keys sent are written, so an absent key is left alone and an explicit `null` clears it; a name correction re-tidies and re-files the entry |
+| PUT    | `/admin/entries/{id}/image` | Replace the photograph (multipart `image`). Normalized exactly like a submission; the photograph it replaces is destroyed once the row points at the new one |
 | DELETE | `/admin/entries/{id}`  | Permanent takedown: row and both images, no undo |
 | GET    | `/admin/entries/{id}/image` | A draft's photo, whatever its state       |
 | GET    | `/admin/entries/{id}/thumb` | The same, small                           |
@@ -191,6 +194,22 @@ the dev default `devtoken`.
 entry returns `possible_duplicates` — exact normalized-name matches plus `pg_trgm`
 near-matches above `NAME_SIMILARITY_THRESHOLD` — with `suggested_best_id` pointing
 at the highest-resolution image, so the better photo is easy to spot.
+
+**Asked before the upload, too.** The wizard's name step calls `GET
+/entries/matches?name=…` — the same matching, keyed on the name rather than on a
+saved row — so a person finds out that the archive already remembers this name
+while there is still nothing to undo.
+
+Only an **exact** normalized-name match stops the flow, on the same reasoning that
+keeps deletion off fuzzy hits: a near name is a question, not a duplicate. Near
+matches are reported on the step and nothing more. When the name is exactly the
+same, the wizard stops and offers three ways on: keep what is here and upload
+nothing, carry on because this is somebody else named alike, or add this
+photograph alongside the one that is here and let the vote below decide which
+stays. Only the first ends the submission — the other two continue with the draft
+untouched, and the same name is not asked about twice unless it is edited. There
+is also a way back to the name itself, for a spelling rather than a decision. The
+lookup is a courtesy and never a gate: a failed one lets the submission through.
 
 **Resolution by vote.** `POST /entries/{id}/feedback` means "this image is the best
 one for this person", one vote per IP per entry (a repeat is `409`). When an entry

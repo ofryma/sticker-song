@@ -127,6 +127,32 @@ class ReviewCounts(BaseModel):
     rejected: int
 
 
+class EntryEdit(BaseModel):
+    """A correction to an entry, made by whoever keeps the archive.
+
+    Every field is optional and only what was actually sent is written — the
+    difference between "leave the location alone" and "this entry has no
+    location" is whether the key is present, not whether it is null. A name is
+    re-tidied and re-normalized on the way in, exactly as on submission, so
+    duplicate detection keeps working after a spelling is corrected.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    person_name: str | None = Field(default=None, min_length=1, max_length=255)
+    sticker_text: str | None = Field(default=None, min_length=1)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    review_note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("person_name", "sticker_text")
+    @classmethod
+    def _not_only_whitespace(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("This cannot be blank")
+        return value
+
+
 class ReviewDecision(BaseModel):
     """Why a reviewer published or rejected. Optional, and kept on the entry."""
 
@@ -148,6 +174,19 @@ class DuplicateCandidate(MemorialEntryRead):
     # True when the normalized names match exactly. Only exact matches are ever
     # deleted automatically; fuzzy hits are suggestions for a human to judge.
     is_exact_match: bool
+
+
+class NameMatchResponse(BaseModel):
+    """What the archive already holds under a name, looked up before an upload.
+
+    Ordered exactly like the duplicates of a saved entry — exact names first,
+    then the near ones. `has_exact_match` is the strong signal: a near match is
+    worth showing and never worth acting on by itself.
+    """
+
+    person_name: str
+    matches: list[DuplicateCandidate]
+    has_exact_match: bool
 
 
 class EntryCreateResponse(BaseModel):

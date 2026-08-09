@@ -41,6 +41,16 @@ export async function createEntry({ image, personName, stickerText, latitude, lo
 }
 
 /**
+ * Who the archive already remembers under a name — asked from the name step of
+ * the wizard, before a photograph is uploaded, so a second record for the same
+ * person can be avoided rather than merged away afterwards.
+ */
+export async function findNameMatches(name) {
+  const query = new URLSearchParams({ name });
+  return unwrap(await fetch(`${BASE}/entries/matches?${query}`));
+}
+
+/**
  * Records the backend thinks may be the same person, plus which of the images
  * is highest resolution. Fuzzy hits are suggestions for a human to judge.
  */
@@ -83,9 +93,22 @@ export async function sendMessage({ kind, body, entryId = null, replyEmail = "",
   );
 }
 
+/**
+ * When the entry last changed, as a stamp an image URL can carry.
+ *
+ * The image endpoints are cached hard and keyed on the entry, so a photograph a
+ * reviewer replaces would otherwise stay in a visitor's browser for as long as
+ * the old one was allowed to live. The stamp changes with the row and the
+ * caching stays immutable, which is what keeps the wall off the network.
+ */
+function version(entry) {
+  const changed = Date.parse(entry.updated_at ?? "");
+  return Number.isNaN(changed) ? "" : `?v=${changed}`;
+}
+
 /** Absolute path for an entry's photo, ready for an <img src>. */
 export function imageUrl(entry) {
-  return `${BASE}${entry.image_url}`;
+  return `${BASE}${entry.image_url}${version(entry)}`;
 }
 
 /**
@@ -94,5 +117,5 @@ export function imageUrl(entry) {
  * thumbnail fall back to the full image server-side, so this is always safe.
  */
 export function thumbUrl(entry) {
-  return `${BASE}${entry.thumb_url ?? entry.image_url}`;
+  return `${BASE}${entry.thumb_url ?? entry.image_url}${version(entry)}`;
 }

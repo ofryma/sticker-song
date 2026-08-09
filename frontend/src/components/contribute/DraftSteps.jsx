@@ -26,7 +26,7 @@ function StepShell({ title, hint, children, blocker, photo }) {
 }
 
 /** The body of whichever step is current. Chrome lives in the page. */
-export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
+export function DraftStep({ draft, step, preview, blocker, set, setImage, nameNotice }) {
   const { t } = useI18n();
   const message = blocker ? t(`contribute.required.${blocker}`) : null;
 
@@ -63,6 +63,9 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
           variant="bordered"
           classNames={{ ...FIELD, input: `${FIELD.input} font-serif text-xl sm:text-2xl` }}
         />
+        {/* Whether the archive already remembers this person, said quietly while
+            the name is typed. Nothing here interrupts the step. */}
+        {nameNotice}
       </StepShell>
     );
   }
