@@ -70,6 +70,29 @@ describe("the wizard", () => {
     expect(screen.getByRole("heading", { name: text("contribute.textTitle") })).toBeVisible();
   });
 
+  it("keeps the photograph beside every later step, and opens it whole on request", async () => {
+    const user = userEvent.setup();
+    renderApp(<Contribute />);
+
+    await user.upload(document.querySelector('input[type="file"]'), photo());
+    await user.click(screen.getByRole("button", NEXT));
+
+    // Nothing has to be written from memory: the sticker is right there.
+    const strip = screen.getByRole("button", { name: new RegExp(text("contribute.photoAside")) });
+    expect(strip).toBeVisible();
+
+    await user.click(strip);
+    const viewers = await screen.findAllByRole("button", { name: text("contribute.photoClose") });
+    expect(viewers.length).toBeGreaterThan(0);
+
+    // And it is put away again in one press, back on the name.
+    await user.click(viewers.at(-1));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: text("contribute.photoClose") })).toBeNull(),
+    );
+    expect(screen.getByLabelText(text("contribute.nameTitle"))).toBeVisible();
+  });
+
   it("ends on a review of what is about to be kept", async () => {
     const user = userEvent.setup();
     renderApp(<Contribute />);

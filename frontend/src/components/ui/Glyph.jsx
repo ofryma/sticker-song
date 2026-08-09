@@ -5,6 +5,8 @@ const ICON = {
   swap: "M4 9h13l-3-3M20 15H7l3 3",
   cross: "M6 6l12 12M18 6L6 18",
   crop: ["M7.5 3v13.5H21", "M3 7.5h13.5V21"],
+  /* Two opposite corners pulling apart — a photograph opened whole. */
+  expand: ["M4 9.5V4h5.5", "M20 14.5V20h-5.5", "M4 4l6 6", "M20 20l-6-6"],
   rotateLeft: ["M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.4", "M3.5 4v4.5H8"],
   rotateRight: ["M20.5 12a8.5 8.5 0 1 1-2.6-6.1l2.6 2.5", "M20.5 4v4.5H16"],
   /* Two halves of one picture facing away from the line they were folded on. */

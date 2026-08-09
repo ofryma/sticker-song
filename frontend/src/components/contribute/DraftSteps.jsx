@@ -1,19 +1,25 @@
 import { Input, Textarea } from "@heroui/react";
 import { useI18n } from "../../i18n/index.jsx";
 import { PhotoField } from "./PhotoField.jsx";
+import { DraftPhoto } from "./DraftPhoto.jsx";
 import { LocationField } from "./LocationField.jsx";
 import { FIELD } from "../ui/field.js";
 
 /* A column, so a step that wants the room — the photograph — can take it and
    the step still ends where the screen does. */
-function StepShell({ title, hint, children, blocker }) {
+function StepShell({ title, hint, children, blocker, photo }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col animate-rise" key={title}>
       <h2 className="shrink-0 font-display text-2xl text-ink sm:text-3xl">{title}</h2>
       <p className="mt-2 max-w-lg shrink-0 text-sm leading-relaxed text-ink-muted sm:mt-3">
         {hint}
       </p>
-      <div className="mt-5 flex min-h-0 flex-1 flex-col sm:mt-9">{children}</div>
+      <div className="mt-5 flex min-h-0 flex-1 flex-col sm:mt-9">
+        {/* The sticker sits above the field on every step after its own, so
+            nothing here has to be written from memory. */}
+        <DraftPhoto preview={photo} />
+        {children}
+      </div>
       {blocker && <p className="mt-3 shrink-0 animate-fade text-sm text-sun-deep">{blocker}</p>}
     </div>
   );
@@ -42,6 +48,7 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
         title={t("contribute.nameTitle")}
         hint={t("contribute.nameHint")}
         blocker={message}
+        photo={preview}
       >
         <Input
           value={draft.personName}
@@ -66,6 +73,7 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
         title={t("contribute.textTitle")}
         hint={t("contribute.textHint")}
         blocker={message}
+        photo={preview}
       >
         <Textarea
           value={draft.stickerText}
@@ -83,7 +91,11 @@ export function DraftStep({ draft, step, preview, blocker, set, setImage }) {
   }
 
   return (
-    <StepShell title={t("contribute.locationTitle")} hint={t("contribute.locationHint")}>
+    <StepShell
+      title={t("contribute.locationTitle")}
+      hint={t("contribute.locationHint")}
+      photo={preview}
+    >
       <LocationField latitude={draft.latitude} longitude={draft.longitude} onChange={set} />
     </StepShell>
   );
