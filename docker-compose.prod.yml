@@ -9,10 +9,13 @@
 # IMAGE_TAG to pin a release; the default tracks main.
 #
 # Sized for a 1 GB / 1 vCPU host (a Linode Nanode, a Hetzner CX22 with room to
-# spare). Every service carries a mem_limit, and together they come to ~736 MB,
-# leaving the rest for the kernel and dockerd. The limits are what turn "the box
-# died" into "one container was restarted", so keep them even on a larger
-# machine — raise the numbers instead of removing them.
+# spare). Every service carries a mem_limit, and the ones that run all the time
+# come to ~832 MB, leaving the rest for the kernel and dockerd. The limits are
+# what turn "the box died" into "one container was restarted", so keep them even
+# on a larger machine — raise the numbers instead of removing them.
+#
+# Two of those limits are headroom rather than usage: certbot is a sleeping shell
+# for all but a few seconds a day, and init-certs exits before nginx starts.
 #
 # NOTE: never build on a 1 GB host. The frontend's Vite build alone wants more
 # than the whole machine. These images are pulled, which is why it works.
@@ -90,8 +93,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-stickers}
       MINIO_SECURE: "false"
-      # Same-origin behind nginx, so CORS is only a fallback. JSON list.
-      CORS_ORIGINS: '["${PUBLIC_ORIGIN:-http://localhost}"]'
+      # Same-origin behind nginx, so CORS is only a fallback. JSON list, and the
+      # origin is derived from DOMAIN so it cannot drift from what nginx serves.
+      CORS_ORIGINS: '["https://${DOMAIN}"]'
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       # Sign-in for the /admin review page. Without these nobody can publish.
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
@@ -153,19 +157,111 @@ services:
     mem_limit: ${FRONTEND_MEM:-24m}
     restart: unless-stopped
 
+  # Makes sure nginx has a certificate to start against, on every `up`. Either
+  # the real one, copied out of certbot's tree — which is also how a certificate
+  # issued while the stack was down gets picked up — or, on a box that has none
+  # yet, a self-signed placeholder. The placeholder is what lets TLS be
+  # unconditional: nginx boots, answers the HTTP-01 challenge on port 80, and
+  # `make prod-cert` replaces the placeholder with the real thing.
+  #
+  # certbot/certbot is used for the openssl binary, which nginx:alpine lacks; the
+  # image is already needed for renewals, so this adds nothing to pull.
+  init-certs:
+    logging: *default_logging
+    image: certbot/certbot:latest
+    entrypoint: ["/bin/sh", "-euc"]
+    command:
+      - |
+        live="/etc/letsencrypt/live/$${DOMAIN}"
+        if [ -f "$$live/fullchain.pem" ]; then
+          cp -L "$$live/fullchain.pem" /certs/fullchain.pem
+          cp -L "$$live/privkey.pem"   /certs/privkey.pem
+          chmod 600 /certs/privkey.pem
+          echo "certs: installed the Let's Encrypt certificate for $${DOMAIN}"
+        elif [ -f /certs/fullchain.pem ]; then
+          echo "certs: keeping the certificate already in place"
+        else
+          openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
+            -subj "/CN=$${DOMAIN}" \
+            -addext "subjectAltName=DNS:$${DOMAIN},DNS:www.$${DOMAIN}" \
+            -keyout /certs/privkey.pem -out /certs/fullchain.pem 2>/dev/null
+          chmod 600 /certs/privkey.pem
+          echo "certs: no certificate for $${DOMAIN} yet — wrote a self-signed placeholder."
+          echo "certs: browsers will warn until you run, on this box:"
+          echo "certs:   make prod-cert EMAIL=you@example.org"
+        fi
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./nginx/certs:/certs
+    mem_limit: 64m
+    restart: "no"
+
+  # Renewal, without a cron entry on the host: certbot wakes twice a day and
+  # exits quietly unless the certificate is inside its 30-day window. The
+  # challenge goes through the running nginx via the shared webroot, so no port
+  # has to be freed, and the deploy hook copies the new files where nginx reads
+  # them. nginx picks them up on its own reload loop below.
+  #
+  # Idle cost is a sleeping shell — certbot itself only exists for the seconds it
+  # runs, which is what the limit is sized for.
+  certbot:
+    logging: *default_logging
+    image: certbot/certbot:latest
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --quiet \
+            --deploy-hook 'cp -L "$$RENEWED_LINEAGE/fullchain.pem" /certs/fullchain.pem && cp -L "$$RENEWED_LINEAGE/privkey.pem" /certs/privkey.pem && chmod 600 /certs/privkey.pem' \
+            || echo "certbot: renew failed; will try again in 12h"
+          sleep 12h
+        done
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./nginx/certs:/certs
+      - certbot_webroot:/var/www/certbot
+    depends_on:
+      - nginx
+    mem_limit: ${CERTBOT_MEM:-96m}
+    restart: unless-stopped
+
   nginx:
     logging: *default_logging
     image: nginx:1.27-alpine
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+    # The domain reaches the config through the image's own template rendering:
+    # /etc/nginx/templates/*.template is envsubst'd into /etc/nginx/conf.d at
+    # startup. conf.d is therefore left writable and container-local — the
+    # rendered output, not something to mount. The filter is what stops envsubst
+    # from eating nginx's own $host and $request_uri: only DOMAIN is substituted.
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      NGINX_ENVSUBST_FILTER: "^DOMAIN$$"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/include:/etc/nginx/include:ro
       - ./nginx/certs:/etc/nginx/certs:ro
       - certbot_webroot:/var/www/certbot
+    # Reload every six hours so a renewed certificate is served without anyone
+    # touching the box. A reload is cheap, and the window is far inside the 30
+    # days certbot renews with in hand. The entrypoint is called explicitly
+    # because it only renders templates when its first argument is `nginx`.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        (while :; do sleep 6h; nginx -s reload; done) &
+        exec /docker-entrypoint.sh nginx -g 'daemon off;'
     depends_on:
-      - backend
-      - frontend
+      init-certs:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
     mem_limit: ${NGINX_MEM:-40m}
     restart: unless-stopped
 

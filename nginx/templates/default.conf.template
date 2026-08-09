@@ -1,0 +1,49 @@
+# Edge proxy for the single-server deployment: the shared http-level setup and
+# the plain-HTTP default server. `tls.conf.template` adds HTTPS for $DOMAIN, and
+# both include `include/app.inc` for the locations that serve the archive.
+#
+# A template, not a .conf: the nginx image's entrypoint renders
+# /etc/nginx/templates/*.template into /etc/nginx/conf.d at startup, so the
+# domain arrives from the environment and no file has to be hand-edited on the
+# server. NGINX_ENVSUBST_FILTER restricts substitution to DOMAIN, which is what
+# keeps nginx's own $host and $request_uri from being eaten by envsubst.
+
+# Docker's embedded DNS. Resolving upstreams per request — via the $frontend and
+# $backend variables in app.inc — means a restarted container is picked up
+# without restarting nginx.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+# Rate limit for the two public writes: a submission and a contact message.
+# Both are unauthenticated, so nothing but this stands between the archive and a
+# script with a loop in it.
+#
+# Only POSTs are counted. An empty key is nginx's way of exempting a request, so
+# this map leaves every GET — the wall, the images, an entry — untouched while
+# the same location still handles it.
+map $request_method $write_ip {
+    POST    $binary_remote_addr;
+    default "";
+}
+
+# Ten a minute per IP, with a small burst for a retry or a double tap. Far above
+# what a person does and far below what a script wants. The key is the address
+# nginx sees: behind a further proxy that is the proxy, not the visitor — the
+# same caveat TRUST_PROXY_HEADERS carries in the README.
+limit_req_zone $write_ip zone=public_write:10m rate=10r/m;
+limit_req_status 429;
+
+# The default server: plain HTTP for any host with no server of its own — the
+# bare IP, which is what an uptime check on the address uses, and anything
+# pointed here that is not the domain. The domain itself is claimed by name in
+# tls.conf, which is more specific than this `_`, so those visitors are
+# redirected to HTTPS and never served over plain HTTP.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # Kept here as well as in tls.conf so a first certificate can be issued on a
+    # box whose domain does not resolve here yet.
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    include /etc/nginx/include/app.inc;
+}

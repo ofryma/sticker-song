@@ -9,7 +9,7 @@ const noop = vi.fn();
 
 describe("after a submission", () => {
   it("tells the contributor their entry is waiting to be read", () => {
-    renderApp(<Thanks entry={entry} awaitingReview onView={noop} onAnother={noop} />);
+    renderApp(<Thanks entry={entry} awaitingReview onAnother={noop} />);
 
     expect(
       screen.getByRole("heading", { name: text("contribute.thanksPendingTitle") }),
@@ -21,7 +21,7 @@ describe("after a submission", () => {
   });
 
   it("says it is in the archive when review is turned off", () => {
-    renderApp(<Thanks entry={entry} onView={noop} onAnother={noop} />);
+    renderApp(<Thanks entry={entry} onAnother={noop} />);
 
     expect(
       screen.getByText(text("contribute.thanksLead", { name: "Some Name" })),
@@ -29,8 +29,18 @@ describe("after a submission", () => {
     expect(screen.queryByText(text("contribute.thanksPendingHint"))).not.toBeInTheDocument();
   });
 
+  // A new record goes to review before it reaches the wall, so there is nothing
+  // for the contributor to look at yet — the only ways onward are another
+  // sticker or the wall.
+  it("offers no way to view the record it has just taken", () => {
+    renderApp(<Thanks entry={entry} awaitingReview onAnother={noop} />);
+
+    const names = screen.getAllByRole("button").map((el) => el.textContent);
+    expect(names).toEqual([text("contribute.thanksAnother"), text("nav.wall")]);
+  });
+
   it("thanks without fanfare either way — no exclamation, no emoji", () => {
-    renderApp(<Thanks entry={entry} awaitingReview onView={noop} onAnother={noop} />);
+    renderApp(<Thanks entry={entry} awaitingReview onAnother={noop} />);
 
     const copy = document.body.textContent;
     expect(copy).not.toMatch(/!/);

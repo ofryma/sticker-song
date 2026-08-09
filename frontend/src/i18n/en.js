@@ -142,6 +142,10 @@ export default {
     cropCancel: "Cancel",
     cropApply: "Keep this framing",
     cropFailed: "The photo could not be adjusted. The original is still here.",
+    photoAside: "The sticker",
+    photoOpen: "Tap to see it large",
+    photoAlt: "The sticker you photographed",
+    photoClose: "Back to the form",
     nameTitle: "Name of the fallen",
     nameHint: "The full name, as it appears on the sticker.",
     namePlaceholder: "Full name",
@@ -170,7 +174,6 @@ export default {
     thanksPendingLead:
       "The sticker is kept, and {name} will be on the wall once someone has read it through. Every record is looked over by a person first, so what goes up is whole and worthy of them.",
     thanksPendingHint: "Nothing more is needed from you.",
-    thanksView: "See the record",
     thanksAnother: "Document another sticker",
     errorTitle: "Saving failed",
     errorRetry: "Try sending again",

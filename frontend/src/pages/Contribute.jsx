@@ -5,7 +5,6 @@ import { StepRail } from "../components/contribute/StepRail.jsx";
 import { DraftReview, DraftStep } from "../components/contribute/DraftSteps.jsx";
 import { Thanks } from "../components/contribute/Thanks.jsx";
 import { DuplicateReview } from "../components/contribute/DuplicateReview.jsx";
-import { EntryDetail } from "../components/EntryDetail.jsx";
 import { Action } from "../components/ui/Action.jsx";
 
 /* Every screen of the flow is the same column. `wizard-viewport` holds it to
@@ -18,7 +17,6 @@ const ONE_SCREEN = `wizard-viewport ${COLUMN}`;
 export default function Contribute() {
   const { t } = useI18n();
   const form = useStickerDraft();
-  const [showSaved, setShowSaved] = useState(false);
   const [dismissedDuplicates, setDismissedDuplicates] = useState(false);
 
   if (form.state === "done") {
@@ -33,9 +31,7 @@ export default function Contribute() {
         <Thanks
           entry={form.saved}
           awaitingReview={form.awaitingReview}
-          onView={() => setShowSaved(true)}
           onAnother={() => {
-            setShowSaved(false);
             setDismissedDuplicates(false);
             form.reset();
           }}
@@ -48,7 +44,6 @@ export default function Contribute() {
             onSkip={() => setDismissedDuplicates(true)}
           />
         )}
-        {showSaved && <EntryDetail entry={form.saved} onClose={() => setShowSaved(false)} />}
       </div>
     );
   }

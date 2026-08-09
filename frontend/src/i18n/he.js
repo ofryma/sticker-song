@@ -139,6 +139,10 @@ export default {
     cropCancel: "ביטול",
     cropApply: "שמירת המסגור",
     cropFailed: "לא הצלחנו להתאים את התמונה. המקור נשאר כאן.",
+    photoAside: "המדבקה",
+    photoOpen: "לחיצה לצפייה מוגדלת",
+    photoAlt: "המדבקה שצילמתם",
+    photoClose: "חזרה לטופס",
     nameTitle: "שם הנופל",
     nameHint: "השם המלא, כפי שהוא מופיע על המדבקה.",
     namePlaceholder: "שם מלא",
@@ -167,7 +171,6 @@ export default {
     thanksPendingLead:
       "המדבקה נשמרה, ושמו של {name} יופיע על הקיר לאחר שאדם יקרא את העדות. כל עדות עוברת עין אנושית לפני שהיא נכנסת, כדי שמה שנתלה כאן יהיה שלם וראוי לו.",
     thanksPendingHint: "אין צורך בשום דבר נוסף מצדכם.",
-    thanksView: "צפייה בעדות",
     thanksAnother: "תיעוד מדבקה נוספת",
     errorTitle: "השמירה נכשלה",
     errorRetry: "נסו לשלוח שוב",

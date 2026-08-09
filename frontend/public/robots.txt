@@ -1,0 +1,8 @@
+# The archive is meant to be found. Everything public is open to crawlers; the
+# review page and the API are not places for one to wander.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://stkrmem.com/sitemap.xml

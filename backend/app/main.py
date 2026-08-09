@@ -9,7 +9,7 @@ from app.routers import admin, admin_messages, conflicts, entries, messages, mod
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="Memorial Stickers API", version="0.2.0")
+app = FastAPI(title="Memorial Stickers API", version=settings.app_version)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,4 +46,12 @@ async def warn_about_admin_token() -> None:
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """Liveness, and which build answered.
+
+    The version is here rather than behind the admin credential because this is
+    also what the deploy reads to confirm the image it just started is the one it
+    meant to: a check that has to sign in first is a check that gets dropped. The
+    repository and its images are public, so the number tells nobody anything
+    they could not already read.
+    """
+    return {"status": "ok", "version": settings.app_version}

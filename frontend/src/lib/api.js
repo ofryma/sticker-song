@@ -14,6 +14,11 @@ export async function unwrap(response) {
   return response.json();
 }
 
+/** Liveness, and which build is answering — `{ status, version }`. */
+export async function getHealth() {
+  return unwrap(await fetch(`${BASE}/health`));
+}
+
 export async function listEntries({ limit = 100, offset = 0 } = {}) {
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   return unwrap(await fetch(`${BASE}/entries?${query}`));

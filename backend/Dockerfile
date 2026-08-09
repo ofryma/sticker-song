@@ -21,5 +21,11 @@ RUN uv sync --frozen --no-dev
 
 COPY . .
 
+# Which build this is, passed by CI from the git tag it just advanced. Last, so
+# that a new version invalidates nothing but this layer, and defaulted so an
+# image built by hand still starts and says plainly that it is not a release.
+ARG APP_VERSION=0.0.0-dev
+ENV APP_VERSION=${APP_VERSION}
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

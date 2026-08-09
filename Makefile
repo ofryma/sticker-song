@@ -1,7 +1,8 @@
 .PHONY: up down logs build reset migration backend-shell seed \
         dev dev-infra dev-infra-down dev-backend dev-frontend \
         test test-backend test-frontend lint lint-backend lint-frontend check \
-        prod-pull prod-up prod-down prod-logs prod-deploy prod-health
+        prod-pull prod-up prod-down prod-logs prod-deploy prod-health prod-version \
+        prod-cert prod-cert-install prod-cert-renew
 
 # `.image-tag` holds the version the server runs (IMAGE_TAG=sha-...). The deploy
 # workflow writes it before calling prod-deploy; it is created on demand with
@@ -121,8 +122,49 @@ prod-health:               ## block until the API answers, or fail after ~90s
 	echo "backend did not become healthy" >&2; \
 	$(PROD) ps; $(PROD) logs --tail=80 backend init-db >&2; exit 1
 
+prod-version:              ## print the version the running stack reports
+	@$(PROD) exec -T backend python -c \
+	  'import json, urllib.request; \
+	   print(json.load(urllib.request.urlopen("http://localhost:8000/health"))["version"])'
+
 prod-down:
 	$(PROD) down
 
 prod-logs:
 	$(PROD) logs -f nginx backend
+
+# --- TLS certificates, on the server -----------------------------------------
+# Only the first certificate is a command anyone runs: after that the certbot
+# service in docker-compose.prod.yml renews twice a day and nginx reloads on its
+# own, so there is nothing in cron and nothing to remember.
+#
+# Issuance goes over the webroot the running nginx already serves — certbot
+# writes the challenge into the shared certbot_webroot volume, nginx answers it
+# from /.well-known/acme-challenge/ — so no port has to be freed. DNS has to
+# point here first (`dig +short $(DOMAIN)`), or the challenge fails and burns an
+# attempt against Let's Encrypt's rate limit. Add --dry-run to rehearse against
+# staging, which has a far more generous limit.
+#
+# The domain is read from .env, the one place it is written.
+DOMAIN ?= $(shell sed -n 's/^DOMAIN=//p' .env 2>/dev/null)
+CERT_WEBROOT_VOLUME ?= $(notdir $(CURDIR))_certbot_webroot
+CERTBOT := docker run --rm \
+  -v $(CURDIR)/letsencrypt:/etc/letsencrypt \
+  -v $(CERT_WEBROOT_VOLUME):/var/www/certbot \
+  certbot/certbot
+
+prod-cert:                 ## first certificate for DOMAIN: make prod-cert EMAIL=you@example.org
+	@[ -n "$(DOMAIN)" ] || { echo "no DOMAIN in .env, and none given" >&2; exit 1; }
+	@[ -n "$(EMAIL)" ] || { echo "usage: make prod-cert EMAIL=you@example.org" >&2; exit 1; }
+	$(CERTBOT) certonly --webroot -w /var/www/certbot \
+	  -d $(DOMAIN) -d www.$(DOMAIN) \
+	  --email $(EMAIL) --agree-tos --no-eff-email $(CERTBOT_ARGS)
+	@$(MAKE) --no-print-directory prod-cert-install
+
+prod-cert-install:         ## put the certificate where nginx reads it, and reload
+	$(PROD) run --rm init-certs
+	-$(PROD) exec -T nginx nginx -s reload
+
+prod-cert-renew:           ## force a renewal check now; the certbot service does this twice a day
+	$(PROD) exec -T certbot certbot renew --webroot -w /var/www/certbot
+	@$(MAKE) --no-print-directory prod-cert-install

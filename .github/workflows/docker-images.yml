@@ -9,6 +9,12 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Which part of the version to advance"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 concurrency:
   group: images-${{ github.ref }}
@@ -115,9 +121,83 @@ jobs:
       - name: Build
         run: npm run build
 
+  # The version counter. Git tags are the record — nothing to edit in a file, so
+  # nothing to conflict on merge — and this reads the last one and advances it.
+  # A merge to main takes the patch; minor and major are asked for by hand, in
+  # Actions → CI → "Run workflow".
+  #
+  # It runs after the two check jobs, so a version is only ever spent on a commit
+  # that passed. The tag is pushed with the default GITHUB_TOKEN, and GitHub does
+  # not start workflow runs from that token, which is what keeps this from
+  # triggering itself through the `tags: ["v*"]` filter above.
+  version:
+    name: Version
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      # Unshallow, or there are no tags to read.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out the next version
+        id: next
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force --quiet
+
+          # `sort -V` over the numeric tags only, so a v1.10.0 sorts above v1.9.0
+          # and a stray `v-something` cannot become the latest.
+          latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          latest=${latest:-v0.0.0}
+          IFS=. read -r major minor patch <<<"${latest#v}"
+
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            *)     patch=$((patch + 1)) ;;
+          esac
+
+          # A tag that already exists means a version was spent on a run that
+          # did not finish, or two landed at once. Step over it rather than
+          # failing the build: the number is a counter, not a promise that none
+          # are skipped.
+          while git rev-parse -q --verify "refs/tags/v$major.$minor.$patch" >/dev/null; do
+            patch=$((patch + 1))
+          done
+          version="$major.$minor.$patch"
+
+          # A pull request gets a version to build with but never a tag: nothing
+          # is released from a branch that has not landed.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            version="$version-pr${{ github.event.number }}"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "$latest → v$version (bump: $BUMP)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag the commit
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          TAG: ${{ steps.next.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
   build:
     name: Images
-    needs: [backend, frontend]
+    needs: [backend, frontend, version]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -129,9 +209,14 @@ jobs:
           - name: backend
             context: ./backend
             target: ""
+            # Only the backend is asked which version it is, so only the backend
+            # is told. Passing it to an image whose Dockerfile declares no such
+            # ARG earns a warning and nothing else.
+            version_arg: true
           - name: frontend
             context: ./frontend
             target: prod
+            version_arg: false
     steps:
       - uses: actions/checkout@v4
 
@@ -157,6 +242,10 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
+            # The version this run just took. The semver lines above only fire on
+            # a tag *event*, and CI's own tag deliberately raises none, so this is
+            # what actually puts 1.4.2 on the image.
+            type=raw,value=${{ needs.version.outputs.version }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -166,6 +255,7 @@ jobs:
           # Add linux/arm64 here if the server is ARM; it roughly doubles build time.
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
+          build-args: ${{ matrix.version_arg && format('APP_VERSION={0}', needs.version.outputs.version) || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
@@ -173,12 +263,15 @@ jobs:
 
   # Every merge to main goes straight out, pinned to this commit's images rather
   # than the moving `main` tag, so the deploy and any rollback name one build.
-  # Deploying by hand is Actions → Deploy → "Run workflow".
+  # A hand-started run on main deploys too, which is what makes asking for a
+  # minor or major bump a single click rather than a bump followed by a deploy.
+  # Deploying an *older* build is still Actions → Deploy → "Run workflow".
   deploy:
     name: Deploy
-    needs: [build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, version]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     uses: ./.github/workflows/deploy.yml
     with:
       image_tag: sha-${{ github.sha }}
+      app_version: ${{ needs.version.outputs.version }}
     secrets: inherit

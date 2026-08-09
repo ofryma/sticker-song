@@ -97,7 +97,13 @@ export function ContactForm({ draft, set, blocker }) {
         onChange={(event) => set({ website: event.target.value })}
       />
 
-      {message && <p className="animate-fade text-sm text-sun-deep">{message}</p>}
+      {/* Spoken as well as shown: on a phone this line is the only answer to a
+          tap on Send, and it can sit above the fold. */}
+      {message && (
+        <p role="alert" className="animate-fade text-sm text-sun-deep">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

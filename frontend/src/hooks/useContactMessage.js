@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { sendMessage } from "../lib/api.js";
 
 /* The backend refuses a shorter body, so the page has to know the number too —
@@ -37,19 +37,26 @@ export function useContactMessage({ kind = "", entryId = null } = {}) {
   const [touched, setTouched] = useState(false);
   const [state, setState] = useState("editing"); // editing | sending | done | error
   const [error, setError] = useState(null);
+  const sending = useRef(false);
 
   const blocker = blockerFor(draft);
 
+  /* `touched` is never put back: once somebody has tried to send, the thing
+     standing in the way stays on the page until it is met. Clearing it on the
+     next keystroke made the reason flash and vanish, which reads as a form that
+     does nothing. */
   const set = useCallback((patch) => {
     setDraft((current) => ({ ...current, ...patch }));
-    setTouched(false);
   }, []);
 
   const submit = useCallback(async () => {
+    // One message per send, however many taps arrive.
+    if (sending.current) return;
     if (blockerFor(draft)) {
       setTouched(true);
       return;
     }
+    sending.current = true;
     setState("sending");
     setError(null);
     try {
@@ -64,6 +71,8 @@ export function useContactMessage({ kind = "", entryId = null } = {}) {
     } catch (cause) {
       setError(cause);
       setState("error");
+    } finally {
+      sending.current = false;
     }
   }, [draft, entryId]);
 

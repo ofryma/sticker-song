@@ -1,4 +1,7 @@
 dist/
 node_modules/
+# Gitignored, but prettier does not read .gitignore: running pytest from here
+# once leaves a cache behind, and `npm run check` should not fail over it.
+.pytest_cache/
 package-lock.json
 public/
