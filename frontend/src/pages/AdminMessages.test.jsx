@@ -115,6 +115,32 @@ describe("the messages tab", () => {
     );
   });
 
+  it("carries on to the next message once one is decided", async () => {
+    admin.decideMessage.mockResolvedValue(message({ status: "dismissed" }));
+    const user = await onMessages([
+      message(),
+      message({ id: "msg-2", body: "The photo is sideways.", entry_person_name: "Yonatan Bar" }),
+    ]);
+
+    await user.click(await rowSaying(/spelled wrong/));
+    await user.click(screen.getByRole("button", { name: text("admin.messages.dismiss") }));
+
+    expect(await screen.findByText(text("admin.messages.about"))).toBeInTheDocument();
+    // The drawer shows the second message now, without going back to the list.
+    const drawer = screen.getByRole("dialog");
+    expect(within(drawer).getByText(/photo is sideways/)).toBeInTheDocument();
+  });
+
+  it("closes once the last message on the page is decided", async () => {
+    admin.decideMessage.mockResolvedValue(message({ status: "resolved" }));
+    const user = await onMessages();
+
+    await user.click(await rowSaying(/spelled wrong/));
+    await user.click(screen.getByRole("button", { name: text("admin.messages.resolve") }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("narrows to one kind, and starts again at the first page", async () => {
     const user = await onMessages();
     await screen.findByText(/spelled wrong/);

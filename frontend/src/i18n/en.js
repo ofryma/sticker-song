@@ -224,6 +224,7 @@ export default {
     line: "In their memory",
     built: "An open archive. No advertising, no tracking.",
     source: "Source code",
+    admin: "Keepers",
   },
 
   notFound: {
