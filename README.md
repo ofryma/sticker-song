@@ -213,7 +213,7 @@ notifies anyone** — an admin opens `/admin`, and the Messages tab carries the 
 count. If a takedown request must not sit unseen, that is the place to add a
 webhook.
 
-**Rate limit.** `nginx/conf.d/default.conf` puts `POST /api/entries` and
+**Rate limit.** `nginx/templates/default.conf.template` puts `POST /api/entries` and
 `POST /api/messages` in one `limit_req_zone` at 10 requests a minute per IP with a
 burst of 3, answering `429` beyond that. A `map` on `$request_method` gives every
 non-POST request an empty key, which is nginx's way of exempting it, so reads are
@@ -282,7 +282,8 @@ frontend/
   src/hooks/        reveal, paging, modal, draft flow, admin session + queue
   src/components/   wall grid, entry detail, upload steps, review queue
   src/pages/        Home, Wall, Contribute, About, Admin, NotFound
-nginx/conf.d/         edge proxy config (production only)
+nginx/templates/       edge proxy config, rendered with DOMAIN (production only)
+nginx/include/         locations and TLS settings both servers include
 docker-compose.yml        development
 docker-compose.prod.yml   single-server deployment
 ```
@@ -344,7 +345,7 @@ Stripping `/api` at the edge mirrors what the Vite proxy does in development, so
 
 ```bash
 git clone https://github.com/ofryma/sticker-song && cd sticker-song
-cp .env.prod.example .env      # fill in POSTGRES_PASSWORD and MINIO_SECRET_KEY
+cp .env.prod.example .env      # DOMAIN, POSTGRES_PASSWORD, MINIO_SECRET_KEY
 echo $GHCR_PAT | docker login ghcr.io -u <user> --password-stdin   # private packages
 make prod-up                   # pull + up -d
 make prod-logs
@@ -359,7 +360,7 @@ the API starts, exactly as in development.
 
 `.github/workflows/deploy.yml` does the above from CI. Every merge to `main`
 runs the lint and test jobs, builds and pushes both images, then ships
-`docker-compose.prod.yml`, the `Makefile` and `nginx/conf.d/` to the server over
+`docker-compose.prod.yml`, the `Makefile` and `nginx/templates/` + `nginx/include/` to the server over
 SSH and runs `make prod-deploy` there. It deploys `sha-<commit>` rather than
 `main`, so the running version names one build and a rollback names another.
 
@@ -391,59 +392,57 @@ live on the box.
 
 ### Domain and TLS
 
-The edge config is four files in `nginx/conf.d/`, and only `*.conf` is loaded:
+`DOMAIN` in the server's `.env` is the only place the name is written. nginx
+renders its config with it at container start — the official image envsubst's
+`/etc/nginx/templates/*.template` into its own `conf.d` — and the API's CORS
+origin is derived from it as `https://$DOMAIN`. There is no hand-edited file on
+the box, so a deploy or a rebuilt server produces the same config.
 
-| File               | Role                                                        |
-| ------------------ | ----------------------------------------------------------- |
-| `default.conf`     | resolver, rate-limit zone, and the plain-HTTP default server |
-| `app.inc`          | the locations that serve the archive, included per server    |
-| `tls.conf.example` | the HTTPS servers — copy to `tls.conf` with the real domain  |
-| `tls-params.inc`   | certificate paths and protocol settings                      |
+| File                            | Role                                                    |
+| ------------------------------- | ------------------------------------------------------- |
+| `templates/default.conf.template` | resolver, rate-limit zone, plain-HTTP default server   |
+| `templates/tls.conf.template`     | the HTTPS servers, and HTTP→HTTPS for the domain       |
+| `include/app.inc`                 | the locations that serve the archive                   |
+| `include/tls-params.inc`          | certificate paths and protocol settings                |
 
 `app.inc` exists so the HTTP and HTTPS servers cannot drift: an nginx server
-block inherits nothing from a sibling, so both `include` the same file.
+block inherits nothing from a sibling, so both `include` the same file. Only
+`DOMAIN` is substituted (`NGINX_ENVSUBST_FILTER`), which is what keeps nginx's
+own `$host` and `$request_uri` from being eaten by envsubst.
 
-A fresh box serves plain HTTP on whatever address it has, which is what lets
-certbot answer an HTTP-01 challenge. To put a domain in front of it:
+TLS is always on, because there is always a certificate to start against: the
+`init-certs` step runs before nginx on every `up` and either copies the real
+certificate out of certbot's tree or, on a box that has none, writes a
+self-signed placeholder. A placeholder is a browser warning, never a failure to
+boot — and it is what lets nginx answer the challenge that earns a real one.
 
-1. **Point DNS at the server.** An `A` record for the apex and for `www`, both
-   the server's IP. Delete whatever parking or URL-redirect records the registrar
-   created, or they win over yours. Wait for `dig +short <domain>` to answer with
-   the right address before going further — a challenge against stale DNS fails
-   and counts against Let's Encrypt's issuance limit.
-2. **Issue the certificate**, on the server, with the stack running — certbot
-   writes the challenge into the `certbot_webroot` volume and the running nginx
-   answers it from `/.well-known/acme-challenge/`, so no port has to be freed:
+So bringing up a new domain is two steps:
 
-   ```bash
-   make prod-cert DOMAIN=example.org EMAIL=you@example.org
-   ```
-
-   certbot's tree lands in `./letsencrypt` (untracked; back it up alongside
-   `.env`), and the certificate is copied into `nginx/certs/`, which the compose
-   file mounts read-only. nginx reads plain files, never certbot's `live/`
-   symlinks.
-3. **Enable HTTPS** and set the origin the API allows:
+1. **Point DNS at the server** — `A` records for the apex and `www`. Delete
+   whatever parking or URL-redirect records the registrar created, or they win
+   over yours. Set `DOMAIN` in `.env` and `make prod-up`. Wait for
+   `dig +short <domain>` before going further: a challenge against stale DNS
+   fails and counts against Let's Encrypt's issuance limit.
+2. **Ask for the certificate**, on the server, with the stack running:
 
    ```bash
-   sed 's/example.org/<domain>/g' nginx/conf.d/tls.conf.example > nginx/conf.d/tls.conf
-   sed -i 's|^PUBLIC_ORIGIN=.*|PUBLIC_ORIGIN=https://<domain>|' .env
-   make prod-up                            # recreates backend too: CORS_ORIGINS changed
+   make prod-cert EMAIL=you@example.org      # add CERTBOT_ARGS=--dry-run to rehearse
    ```
 
-   Everything then lands on `https://<domain>`: HTTP for the domain redirects,
-   `www` redirects over TLS, and HSTS is sent for six months. The bare IP keeps
-   answering over plain HTTP through the default server, which is what an uptime
-   check on the address and future renewals use. `tls.conf` is gitignored and
-   lives only on the server, so a deploy — which ships `nginx/conf.d/` — adds
-   files without disturbing it.
-4. **Renew on a schedule.** A weekly root cron entry; certbot exits quietly
-   unless the certificate is within 30 days of expiry, and the target re-copies
-   and reloads nginx:
+   The challenge goes into the `certbot_webroot` volume and the running nginx
+   answers it, so no port has to be freed. certbot's tree lands in
+   `./letsencrypt` — untracked, and worth backing up alongside `.env`.
 
-   ```
-   17 4 * * 1 cd /opt/sticker-song && make prod-cert-renew DOMAIN=<domain> >> /var/log/certbot-renew.log 2>&1
-   ```
+Everything then lands on `https://<domain>`: HTTP for the domain redirects, `www`
+redirects over TLS, and HSTS is sent for six months. The bare IP keeps answering
+plain HTTP through the default server, which is what an uptime check on the
+address and every future challenge use.
+
+**Renewal needs nothing.** The `certbot` service wakes twice a day, exits quietly
+unless the certificate is inside its 30-day window, and on a renewal copies the
+new files where nginx reads them; nginx reloads every six hours and picks them
+up. No cron entry, no host state — a rebuilt box inherits it from the compose
+file. `make prod-cert-renew` forces a check if you want to watch one happen.
 
 Serving over HTTPS also restores the browser geolocation permission, which plain
 HTTP on a public address blocks.
@@ -460,11 +459,14 @@ box such as a Linode Nanode. Measured idle, the stack sits at roughly:
 | backend  | ~150 MB | 288m      |
 | frontend | ~10 MB | 24m        |
 | nginx    | ~10 MB | 40m        |
+| certbot  | ~25 MB | 96m        |
 
-The limits total ~736 MB, leaving the rest of the machine to the kernel and
+The limits total ~832 MB, leaving the rest of the machine to the kernel and
 dockerd. They are there so that a runaway container is restarted instead of the
 host being OOM-killed out from under everything; keep them on a larger box and
-raise the numbers via `.env` rather than deleting them.
+raise the numbers via `.env` rather than deleting them. `init-certs` carries a
+64m limit too, but it exits before nginx starts, so it never counts against the
+steady state.
 
 Three things are worth knowing before deploying on a machine this size:
 

@@ -1,0 +1,50 @@
+# HTTPS for ${DOMAIN}, which comes from .env — nothing here is hand-edited on
+# the server, so a deploy or a rebuilt box gets the same config.
+#
+# TLS is always on, because the certs volume always holds a certificate: the
+# init-certs step copies the real one into place, or writes a self-signed
+# placeholder on a box that has none yet, so nginx can start and answer the
+# HTTP-01 challenge that gets it a real one. A placeholder is a browser warning,
+# never a failure to boot.
+#
+# One canonical address: everything lands on https://${DOMAIN}. The bare IP
+# keeps answering over plain HTTP through the default server in default.conf.
+
+# Plain HTTP for the named hosts. More specific than default.conf's `_`, so
+# nginx picks this for the domain and the app is only ever served over TLS.
+server {
+    listen 80;
+    server_name ${DOMAIN} www.${DOMAIN};
+
+    # Renewals answer here, and must not be redirected.
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    location / { return 301 https://${DOMAIN}$request_uri; }
+}
+
+# www → the bare domain, over TLS so the redirect itself is not a downgrade.
+# The certificate covers both names, which is what makes this block possible.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name www.${DOMAIN};
+
+    include /etc/nginx/include/tls-params.inc;
+
+    return 301 https://${DOMAIN}$request_uri;
+}
+
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name ${DOMAIN};
+
+    include /etc/nginx/include/tls-params.inc;
+
+    # Six months. Long enough to matter, short enough to back out of within one
+    # renewal cycle; no includeSubDomains, so a subdomain stays free to differ,
+    # and no preload, which cannot be undone.
+    add_header Strict-Transport-Security "max-age=15768000" always;
+
+    include /etc/nginx/include/app.inc;
+}

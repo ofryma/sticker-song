@@ -95,17 +95,23 @@ jobs:
             || { echo "::error::the docker compose v2 plugin is unavailable"; exit 1; }
           [ -f "$path/.env" ] \
             || { echo "::error::$path/.env is missing — create it from .env.prod.example"; exit 1; }
+          # nginx renders its templates with DOMAIN, and compose refuses to start
+          # without it. Catch that here rather than half way through a restart.
+          grep -q '^DOMAIN=.' "$path/.env" \
+            || { echo "::error::DOMAIN is not set in $path/.env"; exit 1; }
           REMOTE
 
       # Only the files the server actually runs: the compose file, the Makefile
-      # that drives it, and the edge config nginx mounts. The server's .env,
-      # nginx/certs and volumes are never touched. tar over ssh so the server
-      # needs nothing but tar — no rsync, no git checkout to keep in sync.
+      # that drives it, and the edge config nginx mounts — templates (rendered
+      # with DOMAIN from the server's .env at container start) and the includes
+      # they pull in. The server's .env, nginx/certs, letsencrypt/ and volumes
+      # are never touched. tar over ssh so the server needs nothing but tar — no
+      # rsync, no git checkout to keep in sync.
       - name: Ship stack files
         run: |
           set -euo pipefail
           ssh production "mkdir -p '$DEPLOY_PATH'"
-          tar -czf - docker-compose.prod.yml Makefile nginx/conf.d \
+          tar -czf - docker-compose.prod.yml Makefile nginx/templates nginx/include \
             | ssh production "tar -xzf - -C '$DEPLOY_PATH'"
 
       # A token scoped to this run, valid only while it lasts — no long-lived PAT
@@ -132,6 +138,15 @@ jobs:
         run: |
           set -euo pipefail
           ssh production "cd '$DEPLOY_PATH' && make prod-health"
+
+      # The token above dies with this run, and a dead token in the server's
+      # docker config is worse than no token at all: the registry answers
+      # "denied" instead of falling back to anonymous, so every later
+      # `make prod-up` on the box fails to pull. Both packages are public, so
+      # logging out is what keeps a hand-run deploy working.
+      - name: Log the server back out of GHCR
+        if: always()
+        run: ssh production "docker logout ghcr.io" || true
 
       - name: Summary
         if: always()

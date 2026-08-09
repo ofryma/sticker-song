@@ -1,7 +1,12 @@
-# Edge proxy for the single-server deployment. This file holds the shared setup
-# and the plain-HTTP server; `app.inc` holds the locations that serve the
-# archive, and `tls.conf` (from `tls.conf.example`, once a certificate exists)
-# adds HTTPS for the real domain.
+# Edge proxy for the single-server deployment: the shared http-level setup and
+# the plain-HTTP default server. `tls.conf.template` adds HTTPS for $DOMAIN, and
+# both include `include/app.inc` for the locations that serve the archive.
+#
+# A template, not a .conf: the nginx image's entrypoint renders
+# /etc/nginx/templates/*.template into /etc/nginx/conf.d at startup, so the
+# domain arrives from the environment and no file has to be hand-edited on the
+# server. NGINX_ENVSUBST_FILTER restricts substitution to DOMAIN, which is what
+# keeps nginx's own $host and $request_uri from being eaten by envsubst.
 
 # Docker's embedded DNS. Resolving upstreams per request — via the $frontend and
 # $backend variables in app.inc — means a restarted container is picked up
@@ -27,17 +32,18 @@ map $request_method $write_ip {
 limit_req_zone $write_ip zone=public_write:10m rate=10r/m;
 limit_req_status 429;
 
-# The default server: plain HTTP for any host that has no server of its own —
-# the bare IP, and every host on a box with no certificate yet. Once tls.conf is
-# in place it claims the real domain by name, which is more specific than this
-# `_`, so visitors there get the redirect to HTTPS and only the IP lands here.
+# The default server: plain HTTP for any host with no server of its own — the
+# bare IP, which is what an uptime check on the address uses, and anything
+# pointed here that is not the domain. The domain itself is claimed by name in
+# tls.conf, which is more specific than this `_`, so those visitors are
+# redirected to HTTPS and never served over plain HTTP.
 server {
     listen 80 default_server;
     server_name _;
 
-    # Kept here as well as in tls.conf so a first certificate can be issued
-    # before any TLS server block exists.
+    # Kept here as well as in tls.conf so a first certificate can be issued on a
+    # box whose domain does not resolve here yet.
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
 
-    include /etc/nginx/conf.d/app.inc;
+    include /etc/nginx/include/app.inc;
 }

@@ -7,7 +7,6 @@ node_modules/
 dist/
 .DS_Store
 nginx/certs/*.pem
-nginx/conf.d/tls.conf
 letsencrypt/
 .pytest_cache/
 .ruff_cache/

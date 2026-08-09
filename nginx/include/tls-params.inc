@@ -1,11 +1,11 @@
 # TLS material and protocol settings, shared by the HTTPS server blocks in
-# tls.conf. Included at server level; not loaded on its own (nginx reads
-# conf.d/*.conf, and this is an .inc).
+# tls.conf. Included at server level.
 #
-# The paths are plain files, not certbot's `live/` symlinks: the certificate is
-# copied into ./nginx/certs — which the compose file mounts read-only — by
-# `make prod-cert-install`, and `make prod-cert-renew` copies again and reloads.
-# nginx therefore needs to know nothing about certbot's layout.
+# One fixed path, always populated: the init-certs step copies the live
+# certificate out of certbot's tree into the certs volume, or writes a
+# self-signed placeholder if there is none yet, and the certbot service copies
+# again on every renewal. nginx therefore never has to know certbot's layout,
+# and never fails to start because a file is missing.
 ssl_certificate     /etc/nginx/certs/fullchain.pem;
 ssl_certificate_key /etc/nginx/certs/privkey.pem;
 

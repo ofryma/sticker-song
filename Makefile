@@ -129,42 +129,37 @@ prod-logs:
 	$(PROD) logs -f nginx backend
 
 # --- TLS certificates, on the server -----------------------------------------
-# Let's Encrypt over the webroot the running nginx already serves: certbot
-# writes the challenge into the shared certbot_webroot volume, nginx answers it
-# from /.well-known/acme-challenge/, and no port has to be freed. The DNS record
-# has to point here first — check with `dig +short <domain>` — or the challenge
-# fails and burns an issuance attempt against the rate limit.
+# Only the first certificate is a command anyone runs: after that the certbot
+# service in docker-compose.prod.yml renews twice a day and nginx reloads on its
+# own, so there is nothing in cron and nothing to remember.
 #
-# certbot keeps its own tree in ./letsencrypt (untracked, and worth backing up
-# alongside .env). nginx never reads it: the certificate is copied into
-# ./nginx/certs, which the compose file mounts read-only.
+# Issuance goes over the webroot the running nginx already serves — certbot
+# writes the challenge into the shared certbot_webroot volume, nginx answers it
+# from /.well-known/acme-challenge/ — so no port has to be freed. DNS has to
+# point here first (`dig +short $(DOMAIN)`), or the challenge fails and burns an
+# attempt against Let's Encrypt's rate limit. Add --dry-run to rehearse against
+# staging, which has a far more generous limit.
+#
+# The domain is read from .env, the one place it is written.
+DOMAIN ?= $(shell sed -n 's/^DOMAIN=//p' .env 2>/dev/null)
 CERT_WEBROOT_VOLUME ?= $(notdir $(CURDIR))_certbot_webroot
 CERTBOT := docker run --rm \
   -v $(CURDIR)/letsencrypt:/etc/letsencrypt \
   -v $(CERT_WEBROOT_VOLUME):/var/www/certbot \
   certbot/certbot
 
-prod-cert:                 ## first certificate: make prod-cert DOMAIN=example.org EMAIL=you@example.org
-	@[ -n "$(DOMAIN)" ] && [ -n "$(EMAIL)" ] \
-	  || { echo "usage: make prod-cert DOMAIN=example.org EMAIL=you@example.org" >&2; exit 1; }
+prod-cert:                 ## first certificate for DOMAIN: make prod-cert EMAIL=you@example.org
+	@[ -n "$(DOMAIN)" ] || { echo "no DOMAIN in .env, and none given" >&2; exit 1; }
+	@[ -n "$(EMAIL)" ] || { echo "usage: make prod-cert EMAIL=you@example.org" >&2; exit 1; }
 	$(CERTBOT) certonly --webroot -w /var/www/certbot \
 	  -d $(DOMAIN) -d www.$(DOMAIN) \
-	  --email $(EMAIL) --agree-tos --no-eff-email
-	@$(MAKE) --no-print-directory prod-cert-install DOMAIN=$(DOMAIN)
-	@echo
-	@echo "Certificate installed. To serve it, enable the TLS server blocks:"
-	@echo "  sed 's/example.org/$(DOMAIN)/g' nginx/conf.d/tls.conf.example > nginx/conf.d/tls.conf"
-	@echo "  make prod-up"
-	@echo "and set PUBLIC_ORIGIN=https://$(DOMAIN) in .env first, so CORS matches."
+	  --email $(EMAIL) --agree-tos --no-eff-email $(CERTBOT_ARGS)
+	@$(MAKE) --no-print-directory prod-cert-install
 
-prod-cert-install:         ## copy the issued certificate into nginx/certs and reload nginx
-	@[ -n "$(DOMAIN)" ] || { echo "usage: make prod-cert-install DOMAIN=example.org" >&2; exit 1; }
-	install -m 644 letsencrypt/live/$(DOMAIN)/fullchain.pem nginx/certs/fullchain.pem
-	install -m 600 letsencrypt/live/$(DOMAIN)/privkey.pem   nginx/certs/privkey.pem
-	@# Nothing to reload before the first `make prod-up` with tls.conf in place.
+prod-cert-install:         ## put the certificate where nginx reads it, and reload
+	$(PROD) run --rm init-certs
 	-$(PROD) exec -T nginx nginx -s reload
 
-prod-cert-renew:           ## what cron runs weekly: renew if due, re-copy, reload
-	@[ -n "$(DOMAIN)" ] || { echo "usage: make prod-cert-renew DOMAIN=example.org" >&2; exit 1; }
-	$(CERTBOT) renew --webroot -w /var/www/certbot --quiet
-	@$(MAKE) --no-print-directory prod-cert-install DOMAIN=$(DOMAIN)
+prod-cert-renew:           ## force a renewal check now; the certbot service does this twice a day
+	$(PROD) exec -T certbot certbot renew --webroot -w /var/www/certbot
+	@$(MAKE) --no-print-directory prod-cert-install

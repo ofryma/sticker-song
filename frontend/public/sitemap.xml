@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The routes that exist regardless of what the archive holds. Individual entries
+  are not listed: the wall is one client-rendered page, so a crawler reaches them
+  through it rather than through here.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://stkrmem.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://stkrmem.com/wall</loc><priority>0.9</priority></url>
+  <url><loc>https://stkrmem.com/contribute</loc><priority>0.7</priority></url>
+  <url><loc>https://stkrmem.com/about</loc><priority>0.5</priority></url>
+  <url><loc>https://stkrmem.com/contact</loc><priority>0.3</priority></url>
+</urlset>

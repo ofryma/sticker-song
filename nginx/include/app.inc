@@ -8,7 +8,8 @@
 # from a sibling, and keeping two copies of these locations in step by hand is
 # the way this file rots.
 #
-# Not loaded on its own: nginx reads conf.d/*.conf, and this is an .inc.
+# Not a template and not in conf.d: it holds no ${DOMAIN}, and nginx loads
+# conf.d/*.conf on its own but reaches this only through an explicit include.
 
 # Uploads are capped at 10 MB by the API; leave headroom for the multipart
 # envelope so the API returns its own error rather than an nginx 413.
