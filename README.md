@@ -585,11 +585,12 @@ into it, over the same bot:
 | What                     | Sent by                          | When                                          |
 | ------------------------ | -------------------------------- | --------------------------------------------- |
 | 📥 A new submission       | the API, `backend/app/notify.py`  | a photo is uploaded, right after the response  |
-| ✅ A submission published | the API, `backend/app/notify.py`  | only with `REQUIRE_REVIEW=false`               |
 | 🚢 A deploy finished      | `.github/workflows/deploy.yml`    | the stack is running the new version           |
 | ❌ A deploy failed        | `.github/workflows/deploy.yml`    | any step failed; the previous build is still up |
 | 🔴 The archive is down    | `.github/workflows/uptime.yml`    | `/api/health` missed three checks              |
-| 🟢 The archive is back    | `.github/workflows/uptime.yml`    | it answered again                              |
+
+The channel carries bad news and submissions, and nothing else. Recovery is
+silent, and so is a submission that was published without needing anyone.
 
 Each message opens with its own glyph so the channel can be read at a glance.
 They are functional, not decorative — the archive's own interface carries no
@@ -597,12 +598,21 @@ emoji, and `rules/frontend.md` is what governs that; this is an ops channel and 
 different thing. Keep them restrained for the same reason: a submission is a
 person being added to the archive, not an event to celebrate.
 
+Only a submission that is *waiting* is announced. An entry published the moment
+it arrives (`REQUIRE_REVIEW=false`) needs nobody, and a reviewer already sees
+their own decisions in the admin page as they make them.
+
 Nothing here can cost a contributor an upload: the API's notification runs as a
 background task after the response has gone out, and a Telegram that is down,
 slow or misconfigured is a log line and nothing more. The upload message is
-**text only** — the name, the transcription and a link to the review page. The
+**text only** — the name, the transcription, and a **Review** button. The
 photograph has not been looked at by anybody yet, and an unreviewed image does
 not belong in a phone's notification tray.
+
+The button is a Telegram inline keyboard, which only accepts an `https` url and
+refuses the whole message otherwise, so a development `PUBLIC_URL` of
+`http://localhost:5173` degrades to a plain link rather than costing the
+notification.
 
 ### Setting it up
 
@@ -616,8 +626,9 @@ not belong in a phone's notification tray.
    scripts/telegram_check.py --token <TOKEN> --find
    ```
 4. Put both in the server's `/opt/sticker-song/.env` as `TELEGRAM_BOT_TOKEN` and
-   `TELEGRAM_CHAT_ID`, and recreate the backend (`make prod-up`). The review link
-   comes from `PUBLIC_URL`, which the compose file derives from `DOMAIN`.
+   `TELEGRAM_CHAT_ID`, and recreate the backend (`make prod-up`). The Review
+   button's address comes from `PUBLIC_URL`, which the compose file derives from
+   `DOMAIN`.
 5. Put the same two in the repository's Settings → Secrets and variables →
    Actions, as repository secrets of the same names, so CI can use them too.
 
@@ -653,9 +664,14 @@ nginx serves the single-page app for any path it does not know and would answer
 
 Three tries a minute apart before anything is called an outage, so a dropped
 packet or an nginx reload is not news. State lives in an open GitHub issue
-labelled `downtime`, which is what makes an outage two messages — it went, it
-came back — rather than one every five minutes. GitHub's cron drifts under load,
-so read it as "somebody will know within about ten minutes", not as a pager.
+labelled `downtime`, which is what makes an outage one message rather than one
+every five minutes. Recovery closes that issue without saying anything — closing
+is the state reset, and while it stays open the next outage reads as the same one
+and alerts nobody, so the branch matters even though it is quiet. The closed
+issue, with its two timestamps, is where an outage's length is recorded.
+
+GitHub's cron drifts under load, so read this as "somebody will know within about
+ten minutes", not as a pager.
 
 ## Notes and next steps
 

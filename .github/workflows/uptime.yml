@@ -7,8 +7,12 @@ name: Uptime
 #
 # State lives in a GitHub issue labelled `downtime`, because a workflow run
 # remembers nothing. Open issue = the site is known to be down. That is what turns
-# a five-minute cron into two messages per outage — it went down, it came back —
-# rather than one every five minutes until somebody notices.
+# a five-minute cron into one message per outage rather than one every five
+# minutes until somebody notices.
+#
+# Recovery is deliberately silent — the channel carries bad news and submissions,
+# nothing else — but it still closes the issue, because that is the state reset.
+# The closed issue is the record of how long the outage lasted.
 #
 # Repository secrets:
 #   TELEGRAM_BOT_TOKEN  the @BotFather token for the ops bot
@@ -131,11 +135,14 @@ jobs:
           <code>$(printf '%s' "$DETAIL" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')</code>"
 
           elif [ "$UP" = "true" ] && [ -n "$ISSUE" ]; then
+            # Recovery closes the issue but says nothing: the channel is for bad
+            # news and for submissions. Closing is not optional though — it is the
+            # state reset, and while the issue stays open the next outage looks
+            # like the same one and alerts nobody. The closed issue, with its two
+            # timestamps, is where an outage's length is recorded instead.
             gh issue close "$ISSUE" --repo "$REPO" \
               --comment "Answering again as of $RUN_URL" >/dev/null
-            notify "<b>🟢 The archive is back</b>
-
-          <code>$HEALTH_URL</code> is answering again."
+            echo "recovered; closed issue #$ISSUE (no message, by design)"
 
           else
             echo "no change (up=$UP)"

@@ -201,14 +201,15 @@ jobs:
             exit 0
           fi
           if [ "$STATUS" = "success" ]; then
+            # The version is the whole story either way. The image tag is in the
+            # run, which both messages link to when there is anything to go and do.
             text="<b>🚢 Deploy finished</b>
 
-          Version <code>$VERSION</code> is live on <a href=\"$SITE_URL\">production</a>.
-          Image <code>$IMAGE_TAG</code>."
+          Version <code>$VERSION</code> is live on <a href=\"$SITE_URL\">production</a>."
           else
             text="<b>❌ Deploy $STATUS</b>
 
-          Version <code>$VERSION</code> (image <code>$IMAGE_TAG</code>) did not go out.
+          Version <code>$VERSION</code> did not go out.
           The stack is running whatever it was running before.
           <a href=\"$RUN_URL\">See the run</a>"
           fi

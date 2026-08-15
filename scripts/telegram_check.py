@@ -93,31 +93,35 @@ def find_chats(token: str) -> list[tuple[str, str]]:
     return list(reversed(seen.items()))
 
 
-def sample(kind: str) -> str:
-    """One message in the shape the archive really sends."""
+FOOTER = "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"
+
+
+def sample(kind: str) -> tuple[str, dict]:
+    """One message in the shape the archive really sends, and its extra params."""
     name = html.escape("שם מלא / Full Name")
     if kind == "upload":
+        # The review link is an inline button, the way the API sends it.
+        keyboard = {
+            "inline_keyboard": [[{"text": "Review", "url": "https://stkrmem.com/admin"}]]
+        }
         return (
             "<b>📥 New submission — waiting for review</b>\n\n"
             f"<b>{name}</b>\n"
-            "The transcribed sticker text goes here.\n\n"
-            '<a href="https://stkrmem.com/admin">Review '
-            "11111111-2222-3333-4444-555555555555</a>"
-            "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"
+            "The transcribed sticker text goes here." + FOOTER,
+            {"reply_markup": json.dumps(keyboard)},
         )
     if kind == "deploy":
         return (
             "<b>🚢 Deploy finished</b>\n\n"
             "Version <code>1.2.3</code> is live on "
-            '<a href="https://stkrmem.com">production</a>.\n'
-            "Image <code>sha-0123456789abcdef</code>."
-            "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"
+            '<a href="https://stkrmem.com">production</a>.' + FOOTER,
+            {},
         )
     return (
         "<b>🔴 The archive is not answering</b>\n\n"
         "<code>https://stkrmem.com/api/health</code> failed three checks in a row.\n\n"
-        "<code>curl: (28) Operation timed out after 15001 milliseconds</code>"
-        "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"
+        "<code>curl: (28) Operation timed out after 15001 milliseconds</code>" + FOOTER,
+        {},
     )
 
 
@@ -203,14 +207,16 @@ def main() -> int:
     # 3. Does a message actually land?
     kinds = ["upload", "deploy", "downtime"] if args.sample == "all" else [args.sample]
     for kind in kinds:
+        text, extra = sample(kind)
         try:
             call(
                 token,
                 "sendMessage",
                 chat_id=chat,
-                text=sample(kind),
+                text=text,
                 parse_mode="HTML",
                 disable_web_page_preview="true",
+                **extra,
             )
         except RuntimeError as exc:
             print(f"\nThe {kind} sample did not land.\n  {exc}", file=sys.stderr)

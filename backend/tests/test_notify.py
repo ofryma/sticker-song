@@ -76,7 +76,7 @@ async def test_half_a_configuration_is_no_configuration(monkeypatch) -> None:
 
 
 async def test_a_new_entry_announces_the_name_and_the_text(telegram) -> None:
-    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text")
 
     (message,) = telegram
     assert message["chat_id"] == "-1001234567890"
@@ -86,35 +86,46 @@ async def test_a_new_entry_announces_the_name_and_the_text(telegram) -> None:
     assert "waiting for review" in message["text"]
 
 
-async def test_each_kind_of_submission_carries_its_own_glyph(telegram) -> None:
+async def test_the_message_opens_with_its_glyph(telegram) -> None:
     """The channel is read at a glance, so the first character has to mean
-    something: an inbox for what needs a person, a tick for what does not."""
-    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
-    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=False)
+    something: an inbox for the one thing here that needs a person."""
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text")
 
-    waiting, published = (message["text"] for message in telegram)
-    assert waiting.startswith("<b>📥")
-    assert published.startswith("<b>✅")
+    assert telegram[0]["text"].startswith("<b>📥")
 
 
-async def test_the_message_links_to_the_review_page(telegram) -> None:
-    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
+async def test_the_review_page_is_a_button(telegram) -> None:
+    """A tap target, not a line of link text: the reviewer is on a phone."""
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text")
 
-    assert "https://stkrmem.example/admin" in telegram[0]["text"]
-
-
-async def test_no_public_url_means_no_link(telegram, monkeypatch) -> None:
-    monkeypatch.setattr(settings, "public_url", "")
-
-    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
-
+    (row,) = telegram[0]["reply_markup"]["inline_keyboard"]
+    assert row == [{"text": "Review", "url": "https://stkrmem.example/admin"}]
+    # The button carries the link, so the message body no longer needs one.
     assert "<a href" not in telegram[0]["text"]
 
 
+async def test_no_public_url_means_no_button_and_no_link(telegram, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "public_url", "")
+
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text")
+
+    assert "reply_markup" not in telegram[0]
+    assert "<a href" not in telegram[0]["text"]
+
+
+async def test_a_plain_http_url_falls_back_to_a_link(telegram, monkeypatch) -> None:
+    """Telegram refuses a non-https button and rejects the whole message with it,
+    so a development PUBLIC_URL must not be able to cost the notification."""
+    monkeypatch.setattr(settings, "public_url", "http://localhost:5173")
+
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text")
+
+    assert "reply_markup" not in telegram[0]
+    assert '<a href="http://localhost:5173/admin">Review</a>' in telegram[0]["text"]
+
+
 async def test_markup_in_a_submission_cannot_break_the_message(telegram) -> None:
-    await notify.new_entry(
-        ENTRY_ID, "<b>Name</b>", "text & <i>more</i>", awaiting_review=True
-    )
+    await notify.new_entry(ENTRY_ID, "<b>Name</b>", "text & <i>more</i>")
 
     text = telegram[0]["text"]
     assert "&lt;b&gt;Name&lt;/b&gt;" in text
@@ -122,7 +133,7 @@ async def test_markup_in_a_submission_cannot_break_the_message(telegram) -> None
 
 
 async def test_a_very_long_sticker_text_is_trimmed(telegram) -> None:
-    await notify.new_entry(ENTRY_ID, "Full Name", "word " * 500, awaiting_review=True)
+    await notify.new_entry(ENTRY_ID, "Full Name", "word " * 500)
 
     assert len(telegram[0]["text"]) < 4096
 
@@ -140,6 +151,35 @@ async def test_a_rejected_message_is_swallowed(monkeypatch) -> None:
     )
 
     assert await notify.send("hello") is False
+
+
+@pytest.mark.integration
+async def test_a_draft_is_announced(client, review_required, telegram) -> None:
+    await client.post(
+        "/entries",
+        files={"image": ("photo.jpg", factories.jpeg(), "image/jpeg")},
+        data={"person_name": "Full Name", "sticker_text": "sticker text"},
+        headers={"x-forwarded-for": "10.0.0.1"},
+    )
+
+    assert len(telegram) == 1
+    assert "Full Name" in telegram[0]["text"]
+
+
+@pytest.mark.integration
+async def test_an_entry_published_on_arrival_is_not_announced(client, telegram) -> None:
+    """With REQUIRE_REVIEW off nothing needs a person: the entry is already on the
+    wall, and a reviewer sees their own decisions in the admin page as they make
+    them. The channel is for what is waiting, so this is silence by design."""
+    response = await client.post(
+        "/entries",
+        files={"image": ("photo.jpg", factories.jpeg(), "image/jpeg")},
+        data={"person_name": "Full Name", "sticker_text": "sticker text"},
+        headers={"x-forwarded-for": "10.0.0.1"},
+    )
+
+    assert response.json()["awaiting_review"] is False
+    assert telegram == []
 
 
 @pytest.mark.integration

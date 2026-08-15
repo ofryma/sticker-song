@@ -38,18 +38,25 @@ def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=TIMEOUT)
 
 
-async def send(text: str) -> bool:
-    """Post one HTML message to the channel. Never raises; returns whether it landed."""
+async def send(text: str, buttons: list[tuple[str, str]] | None = None) -> bool:
+    """Post one HTML message to the channel. Never raises; returns whether it landed.
+
+    `buttons` is (label, url) pairs, laid out as one row under the message.
+    """
     if not settings.telegram_enabled:
         return False
 
     url = f"{API_ROOT}/bot{settings.telegram_bot_token}/sendMessage"
-    payload = {
+    payload: dict = {
         "chat_id": settings.telegram_chat_id,
         "text": text,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
+    if buttons:
+        payload["reply_markup"] = {
+            "inline_keyboard": [[{"text": label, "url": link} for label, link in buttons]]
+        }
     try:
         async with _client() as client:
             response = await client.post(url, json=payload)
@@ -66,36 +73,40 @@ async def send(text: str) -> bool:
     return True
 
 
-def _review_link(entry_id: uuid.UUID) -> str:
+def _admin_url() -> str:
     """Where the reviewer goes. Empty when PUBLIC_URL is not configured."""
     if not settings.public_url:
         return ""
-    return f'\n\n<a href="{settings.public_url.rstrip("/")}/admin">Review {entry_id}</a>'
+    return f"{settings.public_url.rstrip('/')}/admin"
 
 
-async def new_entry(
-    entry_id: uuid.UUID, person_name: str, sticker_text: str, awaiting_review: bool
-) -> None:
-    """Announce a fresh submission.
+async def new_entry(entry_id: uuid.UUID, person_name: str, sticker_text: str) -> None:
+    """Announce a submission that is waiting for a reviewer.
+
+    The one thing this channel is for: something needs a person. An entry that is
+    published the moment it arrives needs nobody, and is announced by nothing —
+    see the call site in `routers/entries.py`.
 
     Deliberately text only: the photograph has not been looked at by anyone yet,
     and an unreviewed image does not go into a phone's notification tray. The name
     and the transcription are what tell a reviewer whether this needs them now.
     """
-    # One glyph per kind of message, so the channel can be read at a glance
-    # without any of them being read as a flourish: an inbox for something that
-    # needs a person, a tick for something that does not. The deploy and uptime
-    # messages carry their own, in the two workflows.
-    heading = (
-        "📥 New submission — waiting for review"
-        if awaiting_review
-        else "✅ New submission — published"
-    )
+    # The glyph, so the channel can be read at a glance without it being read as a
+    # flourish. The deploy and uptime messages carry their own, in the workflows.
     body = (
-        f"<b>{html.escape(heading)}</b>\n\n"
+        "<b>📥 New submission — waiting for review</b>\n\n"
         f"<b>{html.escape(_trim(person_name, 120))}</b>\n"
         f"{html.escape(_trim(sticker_text, MAX_TEXT))}"
-        f"{_review_link(entry_id)}"
     )
-    if await send(body):
+
+    # A tap target rather than a line of link text — the reviewer is on a phone.
+    # Telegram only accepts an https button, and refuses the whole message if the
+    # url is anything else, so a development PUBLIC_URL of http://localhost falls
+    # back to a plain link instead of costing the notification.
+    admin = _admin_url()
+    buttons = [("Review", admin)] if admin.startswith("https://") else None
+    if admin and buttons is None:
+        body += f'\n\n<a href="{html.escape(admin, quote=True)}">Review</a>'
+
+    if await send(body, buttons):
         logger.info("telegram: announced entry %s", entry_id)
