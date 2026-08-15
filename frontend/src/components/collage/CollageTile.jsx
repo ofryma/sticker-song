@@ -1,15 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ratioOf } from "../../lib/format.js";
 import { Sticker } from "../Sticker.jsx";
-import { fitWidth, slotStyle } from "./layout.js";
+import { tileWidth } from "./layout.js";
 
 /* Long, symmetrical crossfade: one photograph leaves as the next arrives. */
 const TRANSITION = { duration: 2.2, ease: [0.16, 0.8, 0.24, 1] };
 
 /** One cell of the collage — holds a single photograph at a time. */
-export function CollageTile({ slot, entry, generation, onOpen, still }) {
+export function CollageTile({ slot, grid, entry, generation, onOpen, still }) {
   return (
-    <div className="collage-cell absolute" style={slotStyle(slot)}>
+    <div className="absolute" style={{ left: slot.x, top: slot.y }}>
       <AnimatePresence mode="sync" initial={false}>
         <motion.button
           key={`${entry.id}-${generation}`}
@@ -20,12 +20,12 @@ export function CollageTile({ slot, entry, generation, onOpen, still }) {
           animate={{ opacity: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, filter: "blur(6px)" }}
           transition={TRANSITION}
-          /* Each photograph sits in the middle of its cell, as large as the cell
-             takes at the sticker's own proportions. Centred with a transform so
-             the crossfading pair can overlap in the same place. */
-          style={{ width: fitWidth(ratioOf(entry)), x: "-50%", y: "-50%" }}
-          className="group focus-visible:ring-tekhelet/70 absolute top-1/2 left-1/2 block rounded-sm
-            focus-visible:ring-2 focus-visible:outline-none"
+          /* Every photograph is given the same footprint, whatever its
+             proportions, and is centred on its cell with a transform so the
+             crossfading pair can overlap in the same place. */
+          style={{ width: tileWidth(ratioOf(entry), grid), x: "-50%", y: "-50%" }}
+          className="group focus-visible:ring-tekhelet/70 absolute block rounded-sm
+            hover:z-10 focus-visible:z-10 focus-visible:ring-2 focus-visible:outline-none"
         >
           <Sticker
             entry={entry}

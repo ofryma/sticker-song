@@ -5,7 +5,7 @@ export default {
   meta: { name: "English", dir: "ltr", locale: "en-US" },
 
   brand: {
-    name: "The Sticker Song",
+    name: "The Wall Remembers",
     tagline: "Memorial sticker archive",
   },
 
