@@ -72,12 +72,6 @@
     background: linear-gradient(to right, transparent, rgba(138, 92, 14, 0.28), transparent);
   }
 
-  /* One cell of the collage lattice. A size container, so a sticker can be sized
-     against the cell's height and keep the proportions it was photographed at. */
-  .collage-cell {
-    container-type: size;
-  }
-
   /* The standard raised surface: warm paper on the parchment page. */
   .card-stone {
     @apply border-day-line/90 bg-day-soft/70 rounded-sm border backdrop-blur-sm;

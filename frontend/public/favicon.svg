@@ -1,5 +1,5 @@
 <!--
-  שירת הסטיקר — the mark is the olive leaf from <Sprig>: one leaf, in daylight.
+  הקיר זוכר — the mark is the olive leaf from <Sprig>: one leaf, in daylight.
   Colors are the design tokens: day #FDFAF3, olive #6B8F3F, olive-deep #47661F,
   sun #E0A03C for the light behind it.
   Drawn on a 64px grid; every detail has to survive being seen at 16px, which is

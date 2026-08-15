@@ -53,8 +53,8 @@ export function useCollageCycle({ slotCount, total, paused, stepMs = 2600, onNee
   if (cycle.slotCount !== slotCount) setCycle(freshCycle(slotCount));
 
   useEffect(() => {
-    // With nothing held back there is nothing to rotate in.
-    if (paused || total <= slotCount) return;
+    // With no slots yet, or nothing held back, there is nothing to rotate in.
+    if (paused || slotCount === 0 || total <= slotCount) return;
 
     const timer = setInterval(() => {
       // The guard covers a tick landing between a breakpoint change and this
