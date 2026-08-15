@@ -179,3 +179,42 @@ jobs:
             echo "- path: \`$DEPLOY_PATH\`"
             echo "- result: ${{ job.status }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Says so in the ops channel, either way. A deploy that failed half way is
+      # the one worth hearing about, so this runs on any outcome and never fails
+      # the job itself — a missing token means no message, not a red deploy.
+      - name: Tell Telegram how it went
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATUS: ${{ job.status }}
+          VERSION: ${{ inputs.app_version || 'not given' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # The address a person would open, which is the domain and not
+          # DEPLOY_HOST — that is an IP, and its certificate is for the domain.
+          SITE_URL: ${{ vars.SITE_URL || 'https://stkrmem.com' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "no Telegram credentials configured; skipping"
+            exit 0
+          fi
+          if [ "$STATUS" = "success" ]; then
+            text="<b>Deploy finished</b>
+
+          Version <code>$VERSION</code> is live on <a href=\"$SITE_URL\">production</a>.
+          Image <code>$IMAGE_TAG</code>."
+          else
+            text="<b>Deploy $STATUS</b>
+
+          Version <code>$VERSION</code> (image <code>$IMAGE_TAG</code>) did not go out.
+          The stack is running whatever it was running before.
+          <a href=\"$RUN_URL\">See the run</a>"
+          fi
+          curl -sS --fail-with-body -X POST \
+            "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+            --data-urlencode "text=$text" \
+            -d parse_mode=HTML -d disable_web_page_preview=true \
+            -o /dev/null || echo "::warning::could not notify Telegram"

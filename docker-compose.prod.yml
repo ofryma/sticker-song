@@ -118,6 +118,11 @@ services:
       DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
       # Real client IPs arrive as X-Forwarded-For from the nginx edge only.
       TRUST_PROXY_HEADERS: "true"
+      # Telegram nudge when a submission lands. Empty = silent. Same DOMAIN the
+      # CORS origin comes from, so the review link cannot point somewhere else.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      PUBLIC_URL: https://${DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy

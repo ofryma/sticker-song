@@ -577,6 +577,77 @@ The frontend Dockerfile has two targets from one dependency layer: `dev` (Vite
 dev server, used by `docker-compose.yml`) and `prod` (`npm run build` into an
 nginx image).
 
+## Notifications (Telegram)
+
+One private Telegram channel carries everything operational. Three things speak
+into it, over the same bot:
+
+| What                | Sent by                            | When                                          |
+| ------------------- | ---------------------------------- | --------------------------------------------- |
+| A new submission    | the API, `backend/app/notify.py`    | a photo is uploaded, right after the response  |
+| A deploy            | `.github/workflows/deploy.yml`      | a deploy finishes, succeeded or failed         |
+| The site is down/back | `.github/workflows/uptime.yml`    | `/api/health` misses three checks, and again when it recovers |
+
+Nothing here can cost a contributor an upload: the API's notification runs as a
+background task after the response has gone out, and a Telegram that is down,
+slow or misconfigured is a log line and nothing more. The upload message is
+**text only** — the name, the transcription and a link to the review page. The
+photograph has not been looked at by anybody yet, and an unreviewed image does
+not belong in a phone's notification tray.
+
+### Setting it up
+
+1. Talk to [@BotFather](https://t.me/BotFather), `/newbot`, and keep the token.
+2. Make a **private channel**, add the bot to it as an administrator with *Post
+   messages*.
+3. Post anything in the channel, then ask which chats the bot can see — the
+   channel's id starts with `-100`:
+
+   ```
+   scripts/telegram_check.py --token <TOKEN> --find
+   ```
+4. Put both in the server's `/opt/sticker-song/.env` as `TELEGRAM_BOT_TOKEN` and
+   `TELEGRAM_CHAT_ID`, and recreate the backend (`make prod-up`). The review link
+   comes from `PUBLIC_URL`, which the compose file derives from `DOMAIN`.
+5. Put the same two in the repository's Settings → Secrets and variables →
+   Actions, as repository secrets of the same names, so CI can use them too.
+
+Leave either one empty and that half simply stays quiet — a development stack
+sends nothing, which is the intended default.
+
+`scripts/telegram_check.py` is the tool for all of this and for the day the
+channel goes quiet. Standard library only, credentials from the flags, the
+environment or `.env`:
+
+```
+scripts/telegram_check.py            # whoami, then a sample of all three messages
+scripts/telegram_check.py --check    # prove the bot can see the channel, post nothing
+scripts/telegram_check.py --find     # list the chats it can see, wrong id and all
+scripts/telegram_check.py --sample deploy
+```
+
+`scripts/telegram_listen.py` is the other half, for finding a chat id: leave it
+running, send a message to the bot or post in the channel, and it prints the id
+of every chat it sees. Telegram gives one bot one reader, so stop any other
+instance first — a second poller is what a `409 Conflict` means when no webhook
+is set, and the script says which of the two it is.
+
+### The uptime check
+
+`uptime.yml` polls from GitHub's runners rather than from a container on the box,
+because a watchdog dies with the machine it is watching. It asks for
+`https://stkrmem.com/api/health` — the API's own route, not `/health`, since
+nginx serves the single-page app for any path it does not know and would answer
+200 with the frontend while the backend was gone — and it insists on
+`"status":"ok"` in the body for the same reason. Override the address with a
+`HEALTH_URL` repository variable.
+
+Three tries a minute apart before anything is called an outage, so a dropped
+packet or an nginx reload is not news. State lives in an open GitHub issue
+labelled `downtime`, which is what makes an outage two messages — it went, it
+came back — rather than one every five minutes. GitHub's cron drifts under load,
+so read it as "somebody will know within about ten minutes", not as a pager.
+
 ## Notes and next steps
 
 The MVP deliberately omits contributor accounts, OCR, and maps. The

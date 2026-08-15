@@ -60,6 +60,11 @@ services:
       # The Vite proxy sits in front of the backend, so X-Forwarded-For is the
       # only way to see real client IPs. See the README before exposing this.
       TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
+      # Optional: announce a new submission in a Telegram channel. Unset = silent,
+      # which is what a development stack should stay.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
     depends_on:
       postgres:
         condition: service_healthy
