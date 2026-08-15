@@ -28,6 +28,19 @@ const ENTRIES = [
 
 const STAGE = { name: text("wall.fullscreenTitle") };
 
+/**
+ * jsdom lays nothing out, so every box measures zero and the collage — which
+ * sizes its lattice against the canvas it is given — puts no photographs up.
+ * A plausible canvas is stood in so the tiles are there to be pressed.
+ */
+function stubLayout() {
+  const rect = { width: 1024, height: 768, top: 0, left: 0, right: 1024, bottom: 768, x: 0, y: 0 };
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+    ...rect,
+    toJSON: () => rect,
+  });
+}
+
 /** jsdom has no screen to fill, so the API is stood up and watched. */
 function stubFullscreen({ supported = true } = {}) {
   const calls = { enter: 0, exit: 0 };
@@ -59,6 +72,7 @@ async function openStage(user) {
 }
 
 beforeEach(() => {
+  stubLayout();
   listEntries.mockReset();
   listEntries.mockResolvedValue(ENTRIES);
   Object.defineProperty(document, "fullscreenElement", { configurable: true, value: null });
