@@ -76,10 +76,23 @@ class Settings(BaseSettings):
     # Honour X-Forwarded-For. Safe behind a trusted proxy only; see README.
     trust_proxy_headers: bool = True
 
+    # Telegram notifications for whoever looks after the archive. Both must be
+    # set or nothing is sent; the channel is private and operational, not public.
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+    # Where the archive answers, used to link a notification to the review page.
+    # Derived from DOMAIN in production, so it cannot drift from what nginx serves.
+    public_url: str = ""
+
     @property
     def review_enabled(self) -> bool:
         """Whether an LLM opinion is available at all."""
         return bool(self.anthropic_api_key)
+
+    @property
+    def telegram_enabled(self) -> bool:
+        """Whether there is a channel to notify at all."""
+        return bool(self.telegram_bot_token and self.telegram_chat_id)
 
     @property
     def admin_login_enabled(self) -> bool:

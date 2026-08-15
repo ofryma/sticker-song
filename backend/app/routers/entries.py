@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, or_, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import db, images, review, storage
+from app import db, images, notify, review, storage
 from app.blacklist import AllowedIpDep
 from app.client_ip import ClientIpDep
 from app.config import settings
@@ -269,6 +269,14 @@ async def create_entry(
 
     # The reviewer's head start, fetched after the response goes out.
     background.add_task(_run_llm_review, entry.id, entry.person_name, entry.sticker_text)
+    # And the nudge that tells them to go and look. Also after the response: a
+    # contributor waits for the archive, never for Telegram. Only a draft is worth
+    # a notification — an entry published on arrival is already on the wall, and
+    # the reviewer sees their own decisions in the admin page as they make them.
+    if entry.status == "pending":
+        background.add_task(
+            notify.new_entry, entry.id, entry.person_name, entry.sticker_text
+        )
 
     candidates = await find_duplicate_candidates(session, entry)
     created = MemorialEntryRead.model_validate(entry)

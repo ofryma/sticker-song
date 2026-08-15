@@ -42,6 +42,8 @@ async def warn_about_admin_token() -> None:
         )
     if not settings.review_enabled:
         logger.info("ANTHROPIC_API_KEY is not set: drafts get no LLM note")
+    if not settings.telegram_enabled:
+        logger.info("TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID are not set: no notifications")
 
 
 @app.get("/health", tags=["meta"])

@@ -1,0 +1,149 @@
+name: Uptime
+
+# Asks the public site whether it is answering, from outside the server, and says
+# so in the Telegram ops channel when that changes. Checking from GitHub rather
+# than from a container on the box is the whole point: a watchdog that dies with
+# the machine cannot report the machine dying.
+#
+# State lives in a GitHub issue labelled `downtime`, because a workflow run
+# remembers nothing. Open issue = the site is known to be down. That is what turns
+# a five-minute cron into one message per outage rather than one every five
+# minutes until somebody notices.
+#
+# Recovery is deliberately silent — the channel carries bad news and submissions,
+# nothing else — but it still closes the issue, because that is the state reset.
+# The closed issue is the record of how long the outage lasted.
+#
+# Repository secrets:
+#   TELEGRAM_BOT_TOKEN  the @BotFather token for the ops bot
+#   TELEGRAM_CHAT_ID    the channel id, starting -100
+# Repository variables:
+#   HEALTH_URL          what to poll (default https://stkrmem.com/api/health)
+#
+# It has to be the API's route behind /api, not /health: nginx serves the
+# single-page app for any path it does not recognise, so /health answers 200 with
+# the frontend's index.html even when the backend is gone. That is why the check
+# below insists on the JSON body as well as on the status code.
+#
+# GitHub's scheduled runs are best effort and drift by minutes under load, so
+# treat this as "somebody will know within about ten minutes", not as a pager.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Is the archive answering
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      HEALTH_URL: ${{ vars.HEALTH_URL || 'https://stkrmem.com/api/health' }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      # Three tries over a minute, so a single dropped packet or a certbot-driven
+      # nginx reload is not an outage. Only a site that misses all three counts.
+      - name: Poll the API health route
+        id: poll
+        run: |
+          set -uo pipefail
+          body=""
+          for attempt in 1 2 3; do
+            # 2>&1 so a TLS or DNS failure ends up in the message too, not just a
+            # missing status line. A failed curl still assigns what it printed.
+            body=$(curl -sS --max-time 15 -w '\n%{http_code}' "$HEALTH_URL" 2>&1) || true
+            code=$(printf '%s' "$body" | tail -1)
+            # The status code alone is not enough: nginx answers 200 with the
+            # single-page app for an unknown path, so the API has to say so itself.
+            if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"status":"ok"'; then
+              echo "up=true" >> "$GITHUB_OUTPUT"
+              echo "detail=" >> "$GITHUB_OUTPUT"
+              echo "healthy on attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt: $(printf '%s' "$body" | tr '\n' ' ' | cut -c1-200)"
+            [ "$attempt" = 3 ] || sleep 20
+          done
+          echo "up=false" >> "$GITHUB_OUTPUT"
+          # Whatever answered the request is not ours to trust, so it goes through
+          # a delimiter it is not going to contain, on one line, truncated.
+          {
+            echo "detail<<HEALTH_BODY_EOF"
+            printf '%s' "$body" | tr '\n' ' ' | cut -c1-300
+            echo
+            echo HEALTH_BODY_EOF
+          } >> "$GITHUB_OUTPUT"
+
+      # The one open `downtime` issue, if there is one. Its number is the state.
+      - name: Read the last known state
+        id: state
+        run: |
+          set -euo pipefail
+          number=$(gh issue list --repo "$REPO" --label downtime --state open \
+            --limit 1 --json number --jq '.[0].number // ""')
+          echo "issue=$number" >> "$GITHUB_OUTPUT"
+          echo "was ${number:+down (issue #$number)}${number:-up}"
+
+      - name: Announce a change
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          UP: ${{ steps.poll.outputs.up }}
+          DETAIL: ${{ steps.poll.outputs.detail }}
+          ISSUE: ${{ steps.state.outputs.issue }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          notify() {
+            if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+              echo "no Telegram credentials configured; skipping"
+              return 0
+            fi
+            curl -sS --fail-with-body -X POST \
+              "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+              --data-urlencode "text=$1" \
+              -d parse_mode=HTML -d disable_web_page_preview=true \
+              -o /dev/null || echo "::warning::could not notify Telegram"
+          }
+
+          if [ "$UP" = "false" ] && [ -z "$ISSUE" ]; then
+            # Newly down: open the issue first, so a crash before the message
+            # still leaves the state right and the next run does not double-alert.
+            gh issue create --repo "$REPO" --label downtime \
+              --title "Site down" \
+              --body "\`$HEALTH_URL\` did not answer a healthy 200 on three tries.
+
+          \`\`\`
+          $DETAIL
+          \`\`\`
+
+          [The run that noticed]($RUN_URL). This issue closes itself when the site answers again." \
+              >/dev/null
+            notify "<b>🔴 The archive is not answering</b>
+
+          <code>$HEALTH_URL</code> failed three checks in a row.
+
+          <code>$(printf '%s' "$DETAIL" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')</code>"
+
+          elif [ "$UP" = "true" ] && [ -n "$ISSUE" ]; then
+            # Recovery closes the issue but says nothing: the channel is for bad
+            # news and for submissions. Closing is not optional though — it is the
+            # state reset, and while the issue stays open the next outage looks
+            # like the same one and alerts nobody. The closed issue, with its two
+            # timestamps, is where an outage's length is recorded instead.
+            gh issue close "$ISSUE" --repo "$REPO" \
+              --comment "Answering again as of $RUN_URL" >/dev/null
+            echo "recovered; closed issue #$ISSUE (no message, by design)"
+
+          else
+            echo "no change (up=$UP)"
+          fi

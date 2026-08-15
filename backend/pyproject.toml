@@ -16,6 +16,8 @@ dependencies = [
     "pillow>=11.0.0",
     "pillow-heif>=0.20.0",
     "anthropic>=0.75.0",
+    # Already present under anthropic; declared because app/notify.py imports it.
+    "httpx>=0.28.0",
 ]
 
 [tool.uv]
