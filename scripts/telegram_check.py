@@ -98,7 +98,7 @@ def sample(kind: str) -> str:
     name = html.escape("שם מלא / Full Name")
     if kind == "upload":
         return (
-            "<b>New submission — waiting for review</b>\n\n"
+            "<b>📥 New submission — waiting for review</b>\n\n"
             f"<b>{name}</b>\n"
             "The transcribed sticker text goes here.\n\n"
             '<a href="https://stkrmem.com/admin">Review '
@@ -107,14 +107,14 @@ def sample(kind: str) -> str:
         )
     if kind == "deploy":
         return (
-            "<b>Deploy finished</b>\n\n"
+            "<b>🚢 Deploy finished</b>\n\n"
             "Version <code>1.2.3</code> is live on "
             '<a href="https://stkrmem.com">production</a>.\n'
             "Image <code>sha-0123456789abcdef</code>."
             "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"
         )
     return (
-        "<b>The archive is not answering</b>\n\n"
+        "<b>🔴 The archive is not answering</b>\n\n"
         "<code>https://stkrmem.com/api/health</code> failed three checks in a row.\n\n"
         "<code>curl: (28) Operation timed out after 15001 milliseconds</code>"
         "\n\n<i>(sample, sent by scripts/telegram_check.py)</i>"

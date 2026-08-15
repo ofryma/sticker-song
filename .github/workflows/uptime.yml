@@ -124,7 +124,7 @@ jobs:
 
           [The run that noticed]($RUN_URL). This issue closes itself when the site answers again." \
               >/dev/null
-            notify "<b>The archive is not answering</b>
+            notify "<b>🔴 The archive is not answering</b>
 
           <code>$HEALTH_URL</code> failed three checks in a row.
 
@@ -133,7 +133,7 @@ jobs:
           elif [ "$UP" = "true" ] && [ -n "$ISSUE" ]; then
             gh issue close "$ISSUE" --repo "$REPO" \
               --comment "Answering again as of $RUN_URL" >/dev/null
-            notify "<b>The archive is back</b>
+            notify "<b>🟢 The archive is back</b>
 
           <code>$HEALTH_URL</code> is answering again."
 

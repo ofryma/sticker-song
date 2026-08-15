@@ -582,11 +582,20 @@ nginx image).
 One private Telegram channel carries everything operational. Three things speak
 into it, over the same bot:
 
-| What                | Sent by                            | When                                          |
-| ------------------- | ---------------------------------- | --------------------------------------------- |
-| A new submission    | the API, `backend/app/notify.py`    | a photo is uploaded, right after the response  |
-| A deploy            | `.github/workflows/deploy.yml`      | a deploy finishes, succeeded or failed         |
-| The site is down/back | `.github/workflows/uptime.yml`    | `/api/health` misses three checks, and again when it recovers |
+| What                     | Sent by                          | When                                          |
+| ------------------------ | -------------------------------- | --------------------------------------------- |
+| 📥 A new submission       | the API, `backend/app/notify.py`  | a photo is uploaded, right after the response  |
+| ✅ A submission published | the API, `backend/app/notify.py`  | only with `REQUIRE_REVIEW=false`               |
+| 🚢 A deploy finished      | `.github/workflows/deploy.yml`    | the stack is running the new version           |
+| ❌ A deploy failed        | `.github/workflows/deploy.yml`    | any step failed; the previous build is still up |
+| 🔴 The archive is down    | `.github/workflows/uptime.yml`    | `/api/health` missed three checks              |
+| 🟢 The archive is back    | `.github/workflows/uptime.yml`    | it answered again                              |
+
+Each message opens with its own glyph so the channel can be read at a glance.
+They are functional, not decorative — the archive's own interface carries no
+emoji, and `rules/frontend.md` is what governs that; this is an ops channel and a
+different thing. Keep them restrained for the same reason: a submission is a
+person being added to the archive, not an event to celebrate.
 
 Nothing here can cost a contributor an upload: the API's notification runs as a
 background task after the response has gone out, and a Telegram that is down,

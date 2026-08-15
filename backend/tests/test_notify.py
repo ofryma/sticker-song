@@ -86,6 +86,17 @@ async def test_a_new_entry_announces_the_name_and_the_text(telegram) -> None:
     assert "waiting for review" in message["text"]
 
 
+async def test_each_kind_of_submission_carries_its_own_glyph(telegram) -> None:
+    """The channel is read at a glance, so the first character has to mean
+    something: an inbox for what needs a person, a tick for what does not."""
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
+    await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=False)
+
+    waiting, published = (message["text"] for message in telegram)
+    assert waiting.startswith("<b>📥")
+    assert published.startswith("<b>✅")
+
+
 async def test_the_message_links_to_the_review_page(telegram) -> None:
     await notify.new_entry(ENTRY_ID, "Full Name", "sticker text", awaiting_review=True)
 

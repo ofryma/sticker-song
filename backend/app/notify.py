@@ -82,10 +82,14 @@ async def new_entry(
     and an unreviewed image does not go into a phone's notification tray. The name
     and the transcription are what tell a reviewer whether this needs them now.
     """
+    # One glyph per kind of message, so the channel can be read at a glance
+    # without any of them being read as a flourish: an inbox for something that
+    # needs a person, a tick for something that does not. The deploy and uptime
+    # messages carry their own, in the two workflows.
     heading = (
-        "New submission — waiting for review"
+        "📥 New submission — waiting for review"
         if awaiting_review
-        else "New submission — published"
+        else "✅ New submission — published"
     )
     body = (
         f"<b>{html.escape(heading)}</b>\n\n"

@@ -201,12 +201,12 @@ jobs:
             exit 0
           fi
           if [ "$STATUS" = "success" ]; then
-            text="<b>Deploy finished</b>
+            text="<b>🚢 Deploy finished</b>
 
           Version <code>$VERSION</code> is live on <a href=\"$SITE_URL\">production</a>.
           Image <code>$IMAGE_TAG</code>."
           else
-            text="<b>Deploy $STATUS</b>
+            text="<b>❌ Deploy $STATUS</b>
 
           Version <code>$VERSION</code> (image <code>$IMAGE_TAG</code>) did not go out.
           The stack is running whatever it was running before.
