@@ -81,7 +81,7 @@ export default {
     empty: "The archive is still empty.",
     emptyLead: "The first record could be yours.",
     loading: "Loading records",
-    collageHint: "The photographs move on their own. A search stops them.",
+    collageHint: "The photographs change on their own. A search stops them.",
     searching: "Showing search results",
     browseAll: "Browse the whole archive",
     fullscreen: "Fill the screen",
