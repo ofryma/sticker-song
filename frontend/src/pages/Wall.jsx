@@ -48,14 +48,14 @@ export default function Wall() {
   // entries; once the archive is exhausted there is nothing left to ask for.
   const needMore = exhausted ? undefined : loadMore;
 
+  // The collage opens the page at the very top of the screen, under the
+  // transparent header; a list of names is read, so it keeps its room.
+  const flush = ready && !listed;
+
   return (
-    // The images open the page; the words and the search sit beneath them.
-    <Page className="pt-6 sm:pt-20">
-      {status === "loading" && <Loading label={t("wall.loading")} />}
-      {status === "error" && <ErrorState error={error} onRetry={reload} />}
-
-      {status === "ready" && entries.length === 0 && <EmptyWall />}
-
+    // The images open the page; the words and the search sit beneath them. The
+    // collage is outside the page shell, so it runs edge to edge of the screen.
+    <>
       {ready && !listed && (
         <Collage
           entries={entries}
@@ -64,74 +64,81 @@ export default function Wall() {
         />
       )}
 
-      {ready &&
-        listed &&
-        (visible.length === 0 ? (
-          <NoResults onClear={() => setQuery("")} />
-        ) : (
-          <>
-            <WallGrid entries={visible} onOpen={(entry) => setSelectedId(entry.id)} />
-            {!exhausted && !searching && (
-              <div className="mt-16 flex justify-center">
-                <Action tone="ghost" onPress={loadMore} isLoading={loadingMore}>
-                  {t("wall.loadMore")}
+      <Page flush={flush}>
+        {status === "loading" && <Loading label={t("wall.loading")} />}
+        {status === "error" && <ErrorState error={error} onRetry={reload} />}
+
+        {status === "ready" && entries.length === 0 && <EmptyWall />}
+
+        {ready &&
+          listed &&
+          (visible.length === 0 ? (
+            <NoResults onClear={() => setQuery("")} />
+          ) : (
+            <>
+              <WallGrid entries={visible} onOpen={(entry) => setSelectedId(entry.id)} />
+              {!exhausted && !searching && (
+                <div className="mt-16 flex justify-center">
+                  <Action tone="ghost" onPress={loadMore} isLoading={loadingMore}>
+                    {t("wall.loadMore")}
+                  </Action>
+                </div>
+              )}
+            </>
+          ))}
+
+        {ready && (
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <p className="text-xs tracking-label text-ink-muted uppercase">
+              {pluralCount(t, "wall.results", listed ? visible.length : entries.length)}
+            </p>
+            {listed ? (
+              !searching && (
+                <Action tone="quiet" size="sm" onPress={() => setBrowsing(false)}>
+                  {t("wall.backToCollage")}
+                </Action>
+              )
+            ) : (
+              <div className="flex shrink-0 items-center gap-1">
+                <Action tone="quiet" size="sm" onPress={openStage}>
+                  {t("wall.fullscreen")}
+                </Action>
+                <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
+                  {t("wall.browseAll")}
                 </Action>
               </div>
             )}
-          </>
-        ))}
+          </div>
+        )}
 
-      {ready && (
-        <div className="mt-6 flex items-center justify-between gap-4">
-          <p className="text-xs tracking-label text-ink-muted uppercase">
-            {pluralCount(t, "wall.results", listed ? visible.length : entries.length)}
+        <header className="mt-12 max-w-xl sm:mt-16">
+          <p className="eyebrow mb-3">{t("wall.kicker")}</p>
+          <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
+            {t("wall.title")}
+          </h1>
+          <p className="mt-4 text-sm leading-relaxed text-ink-muted">
+            {listed ? t("wall.lead") : t("wall.collageHint")}
           </p>
-          {listed ? (
-            !searching && (
-              <Action tone="quiet" size="sm" onPress={() => setBrowsing(false)}>
-                {t("wall.backToCollage")}
-              </Action>
-            )
-          ) : (
-            <div className="flex shrink-0 items-center gap-1">
-              <Action tone="quiet" size="sm" onPress={openStage}>
-                {t("wall.fullscreen")}
-              </Action>
-              <Action tone="quiet" size="sm" onPress={() => setBrowsing(true)}>
-                {t("wall.browseAll")}
-              </Action>
-            </div>
-          )}
-        </div>
-      )}
+        </header>
 
-      <header className="mt-12 max-w-xl sm:mt-16">
-        <p className="eyebrow mb-3">{t("wall.kicker")}</p>
-        <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
-          {t("wall.title")}
-        </h1>
-        <p className="mt-4 text-sm leading-relaxed text-ink-muted">
-          {listed ? t("wall.lead") : t("wall.collageHint")}
-        </p>
-      </header>
+        {ready && <WallSearchBar value={query} onChange={setQuery} />}
 
-      {ready && <WallSearchBar value={query} onChange={setQuery} />}
+        {ready && staged && !listed && (
+          <WallStage
+            entries={entries}
+            onOpen={(entry) => setSelectedId(entry.id)}
+            onClose={closeStage}
+            onNeedMore={needMore}
+          />
+        )}
 
-      {ready && staged && !listed && (
-        <WallStage
-          entries={entries}
-          onOpen={(entry) => setSelectedId(entry.id)}
-          onClose={closeStage}
-          onNeedMore={needMore}
+        <EntryDetail
+          entry={index >= 0 ? visible[index] : null}
+          onClose={() => setSelectedId(null)}
+          onPrev={index > 0 ? () => step(-1) : undefined}
+          onNext={index >= 0 && index < visible.length - 1 ? () => step(1) : undefined}
         />
-      )}
-
-      <EntryDetail
-        entry={index >= 0 ? visible[index] : null}
-        onClose={() => setSelectedId(null)}
-        onPrev={index > 0 ? () => step(-1) : undefined}
-        onNext={index >= 0 && index < visible.length - 1 ? () => step(1) : undefined}
-      />
-    </Page>
+      </Page>
+    </>
   );
 }
