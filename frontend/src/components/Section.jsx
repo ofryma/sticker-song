@@ -23,17 +23,9 @@ export function SectionHeading({ kicker, title, lead, action }) {
   );
 }
 
-/**
- * Standard page shell: max width, gutters, and room to breathe at the top.
- * `flush` drops that top room, for a page that opens on a photograph rather
- * than on words and wants it to reach the top of the screen.
- */
-export function Page({ children, className = "", flush = false }) {
+/** Standard page shell: max width, gutters, and room to breathe at the top. */
+export function Page({ children, className = "" }) {
   return (
-    <div
-      className={`mx-auto max-w-6xl px-4 sm:px-8 ${flush ? "" : "pt-12 sm:pt-28"} ${className}`}
-    >
-      {children}
-    </div>
+    <div className={`mx-auto max-w-6xl px-4 pt-12 sm:px-8 sm:pt-28 ${className}`}>{children}</div>
   );
 }
