@@ -245,7 +245,6 @@ export default {
   footer: {
     line: "לזכרם",
     built: "ארכיון פתוח, ללא פרסום וללא מעקב.",
-    source: "קוד המקור",
     admin: "שומרים",
   },
 
