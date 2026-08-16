@@ -30,6 +30,34 @@ export function formatShortDate(iso, locale) {
   }).format(new Date(iso));
 }
 
+/** A size a person can read. The photographs are counted in gigabytes. */
+export function formatBytes(bytes) {
+  if (bytes == null) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+/** "4 hours ago", in the reader's language, at the largest unit that fits. */
+export function formatAgo(iso, locale) {
+  const seconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  const steps = [
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, size] of steps) {
+    if (seconds >= size) return relative.format(-Math.floor(seconds / size), unit);
+  }
+  return relative.format(0, "minute");
+}
+
 export function formatCoords(lat, lon) {
   if (lat == null || lon == null) return null;
   const ns = lat >= 0 ? "N" : "S";

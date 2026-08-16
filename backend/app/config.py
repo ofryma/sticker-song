@@ -84,6 +84,16 @@ class Settings(BaseSettings):
     # Derived from DOMAIN in production, so it cannot drift from what nginx serves.
     public_url: str = ""
 
+    # Where ops/backup.sh leaves its snapshots, mounted read-only into this
+    # container. Empty means no backup drive is attached to this stack, which is
+    # every development machine: the admin page says so plainly instead of
+    # reporting a failure that is not one.
+    backup_dir: str = ""
+    # How old the last successful run may be before the archive is told the
+    # backups have stopped. One number, so the admin page and the nightly
+    # staleness check can never disagree about what "stale" means.
+    backup_stale_hours: int = Field(default=30, ge=1, le=720)
+
     @property
     def review_enabled(self) -> bool:
         """Whether an LLM opinion is available at all."""
@@ -97,6 +107,11 @@ class Settings(BaseSettings):
     @property
     def admin_login_enabled(self) -> bool:
         return bool(self.admin_username and self.admin_password)
+
+    @property
+    def backup_enabled(self) -> bool:
+        """Whether a backup drive is attached to this stack at all."""
+        return bool(self.backup_dir)
 
 
 @lru_cache

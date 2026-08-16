@@ -65,6 +65,11 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
+      # Where the backup drive is mounted inside the container. Development
+      # machines have no drive attached, so this is empty and the review page's
+      # backups tab says so rather than reporting a fault.
+      BACKUP_DIR: ${BACKUP_DIR:-}
+      BACKUP_STALE_HOURS: ${BACKUP_STALE_HOURS:-30}
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,6 +80,10 @@ services:
   backend:
     build: ./backend
     environment: *backend_env
+    volumes:
+      # Read-only: the API reports on the backups, it never writes one. Set
+      # BACKUP_DIR=/backups to point a local stack at a drill snapshot.
+      - ${BACKUP_DIR_HOST:-./backups}:/backups:ro
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -91,6 +100,28 @@ services:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
       - backend
+
+  # The nightly backup's two tools, behind `profiles` so `up` never starts them.
+  # They exist here as well as in docker-compose.prod.yml so that ops/backup.sh
+  # and ops/restore.sh can be rehearsed against a development stack — a restore
+  # nobody has ever run is not a restore.
+  backup-db:
+    profiles: ["tools"]
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ${BACKUP_DIR_HOST:-./backups}:/backup
+    restart: "no"
+
+  backup-objects:
+    profiles: ["tools"]
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    environment:
+      MC_HOST_live: http://${MINIO_ACCESS_KEY:-minioadmin}:${MINIO_SECRET_KEY:-minioadmin}@minio:9000
+    volumes:
+      - ${BACKUP_DIR_HOST:-./backups}:/backup
+    restart: "no"
 
 volumes:
   postgres_data:

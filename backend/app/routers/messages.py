@@ -11,8 +11,9 @@ submission — the IP blacklist, a cap on every field, and the IP recorded throu
 import logging
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, status
 
+from app import notify
 from app.blacklist import AllowedIpDep
 from app.db import SessionDep
 from app.models import ContactMessage
@@ -26,7 +27,10 @@ router = APIRouter(prefix="/messages", tags=["messages"])
 
 @router.post("", response_model=MessageAccepted, status_code=status.HTTP_201_CREATED)
 async def create_message(
-    session: SessionDep, client_ip: AllowedIpDep, payload: MessageCreate
+    session: SessionDep,
+    client_ip: AllowedIpDep,
+    payload: MessageCreate,
+    background: BackgroundTasks,
 ) -> MessageAccepted:
     """Take a message and keep it for an admin to read.
 
@@ -60,4 +64,15 @@ async def create_message(
     await session.commit()
     await session.refresh(message)
     logger.info("contact message %s (%s) entry=%s", message.id, message.kind, entry_id)
+
+    # After the response, so an unreachable Telegram costs the visitor nothing.
+    # Honeypot submissions never reach here — the channel is for people.
+    background.add_task(
+        notify.new_message,
+        message.id,
+        message.kind,
+        message.body,
+        message.reply_email,
+        entry_id,
+    )
     return MessageAccepted(id=message.id, kind=message.kind)

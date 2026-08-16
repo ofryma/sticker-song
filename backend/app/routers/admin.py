@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 
 from app.admin_auth import issue_session_token, require_admin, verify_credentials
+from app.backups import BackupStatus, read_status
 from app.config import settings
 from app.db import SessionDep
 from app.models import BlacklistedIp
@@ -42,6 +44,16 @@ async def check_session() -> dict[str, bool]:
     """Whether the credential the caller sent is still good — the page calls this
     on load to decide between the sign-in form and the queue."""
     return {"valid": True}
+
+
+@router.get("/backups", response_model=BackupStatus)
+async def backup_status() -> BackupStatus:
+    """When the archive was last copied to the drive, and what those copies hold.
+
+    Reading files rather than a table, and read-only: this answers the question
+    "is the archive safe" without being another way to change anything.
+    """
+    return await run_in_threadpool(read_status)
 
 
 @router.post(

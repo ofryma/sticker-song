@@ -8,6 +8,7 @@ export default {
     queue: "Submissions",
     conflicts: "Conflicts",
     messages: "Messages",
+    backups: "Backups",
   },
   messages: {
     kicker: "Message",
@@ -157,6 +158,26 @@ export default {
   deleteConfirm: "Yes, remove it",
   deleteWarning: "This deletes the record and the photograph, with no undo.",
   cancel: "Keep it",
+  backups: {
+    kicker: "On the drive",
+    lead: "The archive is copied to the drive beside it every night, and the two most recent copies are kept. Putting one back is a command run on the server.",
+    loading: "Reading the drive",
+    lastAt: "Last copied {when}",
+    never: "Nothing has been copied yet",
+    stale:
+      "Nothing has finished in the last {hours} hours. The archive itself is fine; what has stopped is the copying.",
+    noDrive: "No drive is attached to this stack, so nothing is being copied here.",
+    empty: "The drive is attached, but there is no finished copy on it yet.",
+    newest: "newest",
+    refresh: "Read it again",
+    col: {
+      when: "When",
+      entries: "Entries",
+      photos: "Photographs",
+      size: "Size",
+      build: "Build",
+    },
+  },
   llm: {
     ok: "Nothing caught the reader's eye",
     flag: "Worth a close look",

@@ -1,0 +1,19 @@
+[Unit]
+Description=Copy the memorial archive to the backup drive
+# The drive is a separate volume, and a backup that runs without it would
+# quietly write the photos onto the root disk and fill it.
+RequiresMountsFor=/mnt/backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sticker-song
+ExecStart=/opt/sticker-song/ops/backup.sh
+# The first run copies every photo; later ones copy only what is new. Six hours
+# is far more than either needs, and still bounded.
+TimeoutStartSec=6h
+# The archive keeps answering while this runs. On a one-core box that only holds
+# if the copy yields to it.
+Nice=10
+IOSchedulingClass=idle

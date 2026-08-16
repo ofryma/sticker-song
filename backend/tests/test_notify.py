@@ -138,6 +138,44 @@ async def test_a_very_long_sticker_text_is_trimmed(telegram) -> None:
     assert len(telegram[0]["text"]) < 4096
 
 
+async def test_a_message_carries_what_somebody_wrote(telegram) -> None:
+    await notify.new_message(ENTRY_ID, "suggestion", "the wall could hold more")
+
+    (message,) = telegram
+    assert message["text"].startswith("<b>✉️ New message — Suggestion</b>")
+    assert "the wall could hold more" in message["text"]
+    (row,) = message["reply_markup"]["inline_keyboard"]
+    assert row == [{"text": "Read", "url": "https://stkrmem.example/admin"}]
+
+
+async def test_a_message_says_whether_a_reply_is_possible(telegram) -> None:
+    await notify.new_message(
+        ENTRY_ID, "entry_problem", "that is my brother", reply_email="a@b.com"
+    )
+
+    text = telegram[0]["text"]
+    assert "A problem with a sticker" in text
+    assert "Reply to: a@b.com" in text
+
+
+async def test_a_message_without_an_address_says_nothing_about_one(telegram) -> None:
+    await notify.new_message(ENTRY_ID, "bug", "the page will not load")
+
+    assert "Reply to" not in telegram[0]["text"]
+
+
+async def test_markup_in_a_message_cannot_break_it(telegram) -> None:
+    await notify.new_message(ENTRY_ID, "bug", "<b>x</b> & more")
+
+    assert "&lt;b&gt;x&lt;/b&gt; &amp; more" in telegram[0]["text"]
+
+
+async def test_a_very_long_message_is_trimmed(telegram) -> None:
+    await notify.new_message(ENTRY_ID, "suggestion", "word " * 500)
+
+    assert len(telegram[0]["text"]) < 4096
+
+
 async def test_a_telegram_failure_is_swallowed(unreachable_telegram) -> None:
     assert await notify.send("hello") is False
 
@@ -180,6 +218,50 @@ async def test_an_entry_published_on_arrival_is_not_announced(client, telegram) 
 
     assert response.json()["awaiting_review"] is False
     assert telegram == []
+
+
+@pytest.mark.integration
+async def test_a_contact_message_is_announced(client, telegram) -> None:
+    await client.post(
+        "/messages",
+        json={"kind": "bug", "body": "The wall does not load on my phone at all."},
+        headers={"x-forwarded-for": "10.0.0.1"},
+    )
+
+    (message,) = telegram
+    assert "Something broken" in message["text"]
+    assert "The wall does not load on my phone" in message["text"]
+
+
+@pytest.mark.integration
+async def test_a_bot_that_trips_the_honeypot_announces_nothing(client, telegram) -> None:
+    """Nothing was kept, so there is nothing for anyone to read: the channel stays
+    for what a person actually wrote."""
+    response = await client.post(
+        "/messages",
+        json={
+            "kind": "bug",
+            "body": "The wall does not load on my phone at all.",
+            "website": "http://spam.example",
+        },
+        headers={"x-forwarded-for": "10.0.0.1"},
+    )
+
+    assert response.status_code == 201
+    assert telegram == []
+
+
+@pytest.mark.integration
+async def test_an_unreachable_telegram_does_not_cost_a_message(
+    client, unreachable_telegram
+) -> None:
+    response = await client.post(
+        "/messages",
+        json={"kind": "suggestion", "body": "A thought about the archive itself."},
+        headers={"x-forwarded-for": "10.0.0.1"},
+    )
+
+    assert response.status_code == 201
 
 
 @pytest.mark.integration

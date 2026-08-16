@@ -180,3 +180,12 @@ export function resolveConflict({ token, winnerId, loserIds }) {
     body: { winner_id: winnerId, loser_ids: loserIds },
   });
 }
+
+/**
+ * When the archive was last copied to the drive, and what those copies hold.
+ * Read-only, and reading files rather than a table: the API reports on the
+ * backups and has no way to start one or delete one. See ops/backup.sh.
+ */
+export function backups(token) {
+  return authed("/admin/backups", { token });
+}

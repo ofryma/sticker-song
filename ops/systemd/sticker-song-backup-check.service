@@ -1,0 +1,8 @@
+[Unit]
+Description=Say something if the archive has not been backed up lately
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sticker-song
+ExecStart=/opt/sticker-song/ops/backup_check.sh
+TimeoutStartSec=5m

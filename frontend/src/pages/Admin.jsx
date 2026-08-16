@@ -8,6 +8,7 @@ import { SignInCard } from "../components/admin/SignInCard.jsx";
 import { QueueView } from "../components/admin/QueueView.jsx";
 import { ConflictsView } from "../components/admin/ConflictsView.jsx";
 import { MessagesView } from "../components/admin/MessagesView.jsx";
+import { BackupsView } from "../components/admin/BackupsView.jsx";
 import { Version } from "../components/admin/Version.jsx";
 import { Action } from "../components/ui/Action.jsx";
 
@@ -74,9 +75,10 @@ function Review({ token, onExpired, onSignOut }) {
         <Tab key="queue" title={t("admin.mode.queue")} />
         <Tab key="conflicts" title={t("admin.mode.conflicts")} />
         <Tab key="messages" title={t("admin.mode.messages")} />
+        <Tab key="backups" title={t("admin.mode.backups")} />
       </Tabs>
 
-      {/* A lookup rather than nested ternaries, now that there are three. */}
+      {/* A lookup rather than nested ternaries, now that there are several. */}
       {
         {
           queue: (
@@ -89,6 +91,7 @@ function Review({ token, onExpired, onSignOut }) {
           ),
           conflicts: <ConflictsView token={token} onExpired={onExpired} />,
           messages: <MessagesView token={token} onExpired={onExpired} />,
+          backups: <BackupsView token={token} onExpired={onExpired} />,
         }[mode]
       }
     </>
