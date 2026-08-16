@@ -1,76 +1,57 @@
 /**
  * Geometry for the collage, in pixels against the measured canvas.
  *
- * The wall is a lattice of cells — every sticker hangs straight and in line with
- * its neighbours, nothing is tilted — and each photograph is given close to the
- * same footprint as every other one rather than whatever its proportions happen
- * to claim. A tall sticker is shown narrower, a wide one shorter, so a long
- * portrait and a squat landscape read as the same size on the wall.
+ * The wall is a set of columns that drift downwards: photographs enter at the
+ * top, pass the reader, and leave at the bottom, the way a wall of pasted-up
+ * stickers would if you walked along it. Because nothing appears or disappears
+ * in place, the stickers can be packed tight — each column is a single stack at
+ * the full width of the column, at the proportions it was photographed at.
  *
- * Two things hold the wall together. The lattice is built for the number of
- * photographs actually on it, so a short archive spreads over the whole canvas
- * instead of bunching into the first corner, and a row with fewer stickers than
- * the rest is centred rather than left hanging at one edge. And every sticker is
- * kept inside its own cell, so neighbours sit shoulder to shoulder with a hair
- * of daylight between them and never cover one another.
+ * Each column carries its own stack, repeated enough times to reach past the
+ * bottom of the canvas and then doubled, so the drift loops without a seam.
  */
 
-/* Stickers are mostly printed portrait; cells of the same shape pack closest. */
-const TARGET_ASPECT = 0.8;
+import { ratioOf } from "../../lib/format.js";
 
-/* How many photographs are on the wall at once. */
-const TILES = { wide: 18, narrow: 8 };
+/* The width a column aims for; the canvas is divided into as many as fit. */
+const COLUMN_WIDTH = { wide: 260, narrow: 180 };
 
-/* The share of its cell a sticker takes; the remainder is the gap between them. */
-const FILL = 0.94;
+/* How many columns the wall will ever hold, however wide or narrow the screen. */
+const COLUMNS = { min: 2, max: 6 };
 
-/**
- * Rows and columns for a canvas of this shape holding `available` photographs.
- *
- * The count is capped at what the breakpoint asks for, and the columns are then
- * trimmed to what the rows actually need, so every cell in the lattice is used
- * and the cells come out near `TARGET_ASPECT` on a phone and a wide screen alike.
- */
-export function gridFor(width, height, wide, available) {
-  const count = Math.min(available, wide ? TILES.wide : TILES.narrow);
-  if (width <= 0 || height <= 0 || count <= 0) {
-    return { cols: 0, rows: 0, count: 0, width: 0, height: 0, cellW: 0, cellH: 0 };
-  }
+/* How fast the wall drifts, in pixels a second. A slow walk, never a scroll. */
+const SPEED = 24;
 
-  const ideal = Math.round(Math.sqrt((count * width) / (TARGET_ASPECT * height)));
-  const rows = Math.ceil(count / Math.min(count, Math.max(1, ideal)));
-  // Trim back: with 7 photographs over 3 rows, 3 columns leave the lattice full
-  // where the 4 the square root asked for would leave a column half empty.
-  const cols = Math.ceil(count / rows);
-
-  return { cols, rows, count, width, height, cellW: width / cols, cellH: height / rows };
+/** How many columns a canvas of this width carries. */
+export function columnsFor(width, wide) {
+  if (width <= 0) return 0;
+  const fit = Math.round(width / (wide ? COLUMN_WIDTH.wide : COLUMN_WIDTH.narrow));
+  return Math.min(COLUMNS.max, Math.max(COLUMNS.min, fit));
 }
 
 /**
- * The centre of every cell, in pixels, read left to right and top to bottom.
- * A last row with fewer stickers than the rest is spread across the full width
- * so it stays centred under the others rather than starting at one edge.
+ * The archive dealt out over the columns, one photograph at a time, so
+ * neighbouring names sit side by side rather than one above the other.
  */
-export function slotsFor(grid) {
-  const slots = [];
-  for (let row = 0; row < grid.rows; row += 1) {
-    const inRow = Math.min(grid.cols, grid.count - row * grid.cols);
-    if (inRow <= 0) break;
-    const stride = grid.width / inRow;
-    for (let col = 0; col < inRow; col += 1) {
-      slots.push({ x: (col + 0.5) * stride, y: (row + 0.5) * grid.cellH });
-    }
-  }
-  return slots;
+export function splitColumns(entries, cols) {
+  if (cols <= 0) return [];
+  const columns = Array.from({ length: cols }, () => []);
+  entries.forEach((entry, index) => columns[index % cols].push(entry));
+  return columns.filter((column) => column.length > 0);
 }
 
 /**
- * The width, in pixels, at which a sticker of these proportions covers about
- * the same area as every other sticker on the wall — held to whatever fits
- * inside its cell, so no photograph ever reaches over its neighbour. Height
- * follows from the ratio, so a photograph is never stretched or cropped.
+ * How the drift is timed for one column: the stack repeated `repeat` times so
+ * it is taller than the canvas, and the seconds that run of photographs takes
+ * to travel its own height. Every column moves at the same speed — a shorter
+ * stack simply comes round again sooner.
  */
-export function tileWidth(ratio, grid) {
-  const even = Math.sqrt(grid.cellW * grid.cellH * ratio);
-  return Math.min(even, grid.cellW, grid.cellH * ratio) * FILL;
+export function driftFor(column, columnWidth, canvasHeight, gap) {
+  const stack = column.reduce((total, entry) => total + columnWidth / ratioOf(entry) + gap, 0);
+  if (stack <= 0) return { repeat: 1, seconds: 1 };
+
+  // The run has to reach past the bottom of the canvas on its own, or the
+  // second copy would have to start before the first has finished passing.
+  const repeat = Math.max(1, Math.ceil(canvasHeight / stack));
+  return { repeat, seconds: (stack * repeat) / SPEED };
 }

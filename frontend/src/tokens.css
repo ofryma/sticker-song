@@ -55,6 +55,9 @@
   --animate-unfurl: unfurl 2400ms var(--ease-calm) both;
   --animate-breathe: breathe 6s ease-in-out infinite;
   --animate-drift: drift 46s ease-in-out infinite;
+  /* The wall's columns, travelling downwards. Each column sets its own duration
+     from its height, so every column moves at the same unhurried speed. */
+  --animate-fall: fall 90s linear infinite;
 
   /* Content arrives by rising a few pixels into the light. */
   @keyframes rise {
@@ -113,6 +116,18 @@
     50% {
       opacity: 0.9;
       transform: scale(1.06);
+    }
+  }
+
+  /* A column of the wall travelling its own height downwards. The column holds
+     two identical runs of photographs, so ending half a column down lands on
+     the same picture it started from and the loop has no seam. */
+  @keyframes fall {
+    from {
+      transform: translate3d(0, -50%, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
     }
   }
 

@@ -1,47 +1,42 @@
-import { useReducedMotion } from "framer-motion";
-import { useCollageCycle } from "../../hooks/useCollageCycle.js";
-import { usePrefetchThumbs } from "../../hooks/usePrefetchThumbs.js";
+import { useEffect } from "react";
 import { useMeasure } from "../../hooks/useMeasure.js";
 import { useWide } from "../../hooks/useWide.js";
-import { gridFor, slotsFor } from "./layout.js";
-import { CollageTile } from "./CollageTile.jsx";
+import { columnsFor, splitColumns } from "./layout.js";
+import { CollageColumn } from "./CollageColumn.jsx";
+
+/* The daylight between two photographs, in pixels. Tight, like a pasted wall. */
+const GAP = { wide: 10, narrow: 6 };
+
+/* How much of the archive the wall carries at once before it stops asking. */
+const CEILING = 90;
 
 /**
- * The wall as a drifting collage: photographs fade in, hold, and give their
- * place to the next name in the archive, so over a minute of watching the whole
- * archive passes through. The stickers hang in a close lattice — straight, in
- * line with each other, each kept at the proportions it was photographed at but
- * scaled to about the same footprint as its neighbours, so they sit shoulder to
- * shoulder across the whole canvas without ever covering one another.
+ * The wall as a drifting collage: columns of photographs travel slowly
+ * downwards, entering at the top edge and leaving at the bottom, so over a few
+ * minutes of watching the whole archive walks past. The stickers are packed
+ * tight — each is the full width of its column, at the proportions it was
+ * photographed at — and nothing appears or disappears in place.
  *
  * It is ambient, not a way to find someone — that is what the search is for, and
- * cycling stops while a search is open so nothing moves under the reader.
+ * the drift holds still while a search is open so nothing moves under the reader.
  *
- * Only what has been loaded is on the wall: as the cycle nears the end of the
- * loaded entries it asks for the next page through `onNeedMore`, so an archive
- * of any size is walked a page at a time rather than fetched whole.
+ * Only what has been loaded is on the wall: it asks for the next page through
+ * `onNeedMore` until it is carrying a screenful of columns several times over,
+ * so a large archive arrives a page at a time rather than being fetched whole.
  */
 export function Collage({ entries, onOpen, paused = false, full = false, onNeedMore }) {
   const wide = useWide();
-  const reduced = useReducedMotion();
-  // The lattice is laid out against the canvas's real size: every sticker is
-  // given the same footprint, which needs its width and height together.
+  // Columns are laid out against the canvas's real size: how many fit across
+  // it, and how tall a run of photographs has to be to cross it.
   const [canvasRef, canvas] = useMeasure();
-  // The lattice is built for the number of photographs there are to show, so a
-  // short archive spreads over the whole canvas instead of filling a corner.
-  const grid = gridFor(canvas.width, canvas.height, wide, entries.length);
-  const slots = slotsFor(grid);
-  const slotCount = slots.length;
+  const gap = wide ? GAP.wide : GAP.narrow;
+  const count = columnsFor(canvas.width, wide);
+  const columns = splitColumns(entries, count);
+  const columnWidth = count > 0 ? (canvas.width - gap * (count - 1)) / count : 0;
 
-  const { assigned, generation, cursor } = useCollageCycle({
-    slotCount,
-    total: entries.length,
-    // Reduced motion keeps a still collage: composed, but never moving.
-    paused: paused || Boolean(reduced),
-    onNeedMore,
-  });
-
-  usePrefetchThumbs(entries, cursor);
+  useEffect(() => {
+    if (entries.length > 0 && entries.length < CEILING) onNeedMore?.();
+  }, [entries.length, onNeedMore]);
 
   if (entries.length === 0) return null;
 
@@ -49,10 +44,10 @@ export function Collage({ entries, onOpen, paused = false, full = false, onNeedM
     <div
       ref={canvasRef}
       className={[
-        "relative overflow-hidden",
-        // In the page the collage is a tall band that bleeds to the edges; given
+        "relative w-full overflow-hidden",
+        // In the page the collage is a tall band across the whole width; given
         // the whole screen it simply takes the room it is handed.
-        full ? "h-full w-full" : "-mx-4 h-[128vh] sm:mx-0 sm:h-[92vh]",
+        full ? "h-full" : "h-[128vh] sm:h-[92vh]",
       ].join(" ")}
       aria-hidden={paused ? "true" : undefined}
     >
@@ -62,21 +57,21 @@ export function Collage({ entries, onOpen, paused = false, full = false, onNeedM
         className="animate-drift pointer-events-none absolute inset-0 bg-[radial-gradient(50%_40%_at_50%_35%,rgba(224,160,60,0.16),transparent_72%)]"
       />
 
-      {slots.map((slot, index) => {
-        const entry = entries[assigned[index] % entries.length];
-        if (!entry) return null;
-        return (
-          <CollageTile
+      <div className="absolute inset-0 flex" style={{ gap }}>
+        {columns.map((column, index) => (
+          <CollageColumn
             key={index}
-            slot={slot}
-            grid={grid}
-            entry={entry}
-            generation={generation[index]}
+            column={column}
+            width={columnWidth}
+            height={canvas.height}
+            gap={gap}
+            index={index}
+            columns={columns.length}
             onOpen={onOpen}
-            still={Boolean(reduced)}
+            paused={paused}
           />
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
