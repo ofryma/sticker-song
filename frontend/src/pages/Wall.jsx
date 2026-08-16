@@ -48,9 +48,13 @@ export default function Wall() {
   // entries; once the archive is exhausted there is nothing left to ask for.
   const needMore = exhausted ? undefined : loadMore;
 
+  // The collage opens the page at the very top of the screen, under the
+  // transparent header; a list of names is read, so it keeps its room.
+  const flush = ready && !listed;
+
   return (
     // The images open the page; the words and the search sit beneath them.
-    <Page className="pt-6 sm:pt-20">
+    <Page flush={flush}>
       {status === "loading" && <Loading label={t("wall.loading")} />}
       {status === "error" && <ErrorState error={error} onRetry={reload} />}
 

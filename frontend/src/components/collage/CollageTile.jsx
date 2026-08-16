@@ -22,8 +22,11 @@ export function CollageTile({ slot, grid, entry, generation, onOpen, still }) {
           transition={TRANSITION}
           /* Every photograph is given the same footprint, whatever its
              proportions, and is centred on its cell with a transform so the
-             crossfading pair can overlap in the same place. */
-          style={{ width: tileWidth(ratioOf(entry), grid), x: "-50%", y: "-50%" }}
+             crossfading pair can overlap in the same place. `left`/`top` are
+             pinned rather than left to resolve on their own: the archive reads
+             right to left in Hebrew, and an unpinned absolute box would hang
+             from the other edge and pull the whole wall off centre. */
+          style={{ left: 0, top: 0, width: tileWidth(ratioOf(entry), grid), x: "-50%", y: "-50%" }}
           className="group focus-visible:ring-tekhelet/70 absolute block rounded-sm
             hover:z-10 focus-visible:z-10 focus-visible:ring-2 focus-visible:outline-none"
         >
