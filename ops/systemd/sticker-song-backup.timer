@@ -1,0 +1,15 @@
+[Unit]
+Description=Copy the memorial archive to the backup drive, nightly
+
+[Timer]
+# Deep in the quiet hours, and spread over a quarter of an hour so a fleet of
+# boxes would not all start at once.
+OnCalendar=*-*-* 03:10:00
+RandomizedDelaySec=900
+AccuracySec=1m
+# A box that was off at 03:10 backs up when it comes back, rather than skipping
+# the night in silence.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

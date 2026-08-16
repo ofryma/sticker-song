@@ -2,7 +2,9 @@
         dev dev-infra dev-infra-down dev-backend dev-frontend \
         test test-backend test-frontend lint lint-backend lint-frontend check \
         prod-pull prod-up prod-down prod-logs prod-deploy prod-health prod-version \
-        prod-cert prod-cert-install prod-cert-renew
+        prod-cert prod-cert-install prod-cert-renew \
+        prod-backup prod-backup-install prod-backup-check prod-backup-prune \
+        prod-snapshots prod-restore prod-restore-verify
 
 # `.image-tag` holds the version the server runs (IMAGE_TAG=sha-...). The deploy
 # workflow writes it before calling prod-deploy; it is created on demand with
@@ -168,3 +170,40 @@ prod-cert-install:         ## put the certificate where nginx reads it, and relo
 prod-cert-renew:           ## force a renewal check now; the certbot service does this twice a day
 	$(PROD) exec -T certbot certbot renew --webroot -w /var/www/certbot
 	@$(MAKE) --no-print-directory prod-cert-install
+
+# --- backups, on the server --------------------------------------------------
+# Like the certificate, only the first command is one anyone runs: `sudo make
+# prod-backup-install` puts two systemd timers in place, and after that the
+# archive is copied to the drive nightly and a night that went missing says so
+# in Telegram. `systemctl list-timers` is where they are, not cron.
+#
+# A timer rather than a service inside the compose file, unlike certbot, because
+# the job needs both pg_dump and mc and no single image carries both — and this
+# host must never build one. The logic is in ops/, in git, which is also what
+# makes the restore reachable from a box that no longer exists.
+#
+# What is on the drive is visible in the review page's backups tab; these are
+# for the times you are already on the box.
+
+prod-backup:               ## copy the archive to the drive now
+	ops/backup.sh
+
+prod-backup-install:       ## one-time: install the nightly timer (needs sudo)
+	ops/backup_install.sh
+
+prod-backup-check:         ## warn if no backup has finished lately
+	ops/backup_check.sh
+
+prod-backup-prune:         ## reclaim deleted entries' photos: make prod-backup-prune GO=yes
+	ops/backup_prune.sh
+
+prod-snapshots:            ## what is on the drive
+	@ops/snapshots.sh
+
+prod-restore:              ## put the archive back: make prod-restore SNAPSHOT=latest
+	@[ -n "$(SNAPSHOT)" ] || { echo "usage: make prod-restore SNAPSHOT=latest" >&2; exit 1; }
+	CONFIRM="$(CONFIRM)" IMAGE_TAG="$(IMAGE_TAG)" ops/restore.sh --snapshot "$(SNAPSHOT)"
+
+prod-restore-verify:       ## compare the running archive against a snapshot
+	@[ -n "$(SNAPSHOT)" ] || { echo "usage: make prod-restore-verify SNAPSHOT=latest" >&2; exit 1; }
+	@ops/restore_verify.sh --snapshot "$(SNAPSHOT)"

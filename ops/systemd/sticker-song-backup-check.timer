@@ -1,0 +1,14 @@
+[Unit]
+Description=Daily check that the backups are still happening
+
+[Timer]
+# Late morning, hours after the nightly run: long enough that a slow backup has
+# finished, early enough that a bad night is known about the same day. This is a
+# separate timer from the backup itself on purpose — a timer that has stopped
+# firing cannot report that it has stopped firing.
+OnCalendar=*-*-* 09:00:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

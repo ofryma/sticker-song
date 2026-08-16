@@ -577,20 +577,170 @@ The frontend Dockerfile has two targets from one dependency layer: `dev` (Vite
 dev server, used by `docker-compose.yml`) and `prod` (`npm run build` into an
 nginx image).
 
+## Backup and recovery
+
+Everything the archive holds lives in two Docker volumes on one machine. Every
+night it is copied to a drive beside them, two copies are kept, and one command
+puts it back — on this box or on a box that does not exist yet.
+
+Nothing about this is subtle, on purpose. The photographs cannot be collected
+again.
+
+### What is copied, and in what order
+
+| | Where it lives | On the drive |
+| --- | --- | --- |
+| The four tables, and the schema version | Postgres | `db.dump`, a `pg_dump -Fc` archive |
+| Every photograph and thumbnail | the MinIO bucket | `objects/`, one shared mirror |
+| `.env`, `letsencrypt/`, `nginx/certs/` | the server | **not copied — see below** |
+
+The order is Postgres first, then the photographs, and that is not arbitrary. An
+upload writes its photograph to MinIO and only then commits the row that points
+at it, so dumping the database first guarantees that every photograph the dump
+refers to was already in the bucket when the mirror ran. The other order can
+capture a row whose photograph is missing — an entry that comes back as a broken
+image. The cost of this order is a few photographs with no row, which is nothing.
+
+**Secrets are deliberately not backed up.** The drive holds no passwords and no
+keys, so it can be handled, moved and read without care. The price is that a
+rebuild starts by writing `.env` by hand from `.env.prod.example` — the passwords
+may be new ones, since the dump restores into a fresh cluster — and re-issuing
+the certificate with `make prod-cert`. Both are minutes; a leaked `.env` is not.
+
+**The photographs are never deleted from the drive.** Removing a rejected entry
+takes its photographs out of the bucket, and if that reached the drive within a
+day the drive would be a replica rather than a backup. They accumulate slowly, and
+`make prod-backup-prune` reclaims the space deliberately when you decide to.
+Because the photographs are immutable and named by UUID, the two kept snapshots
+share one copy of them: each snapshot is a database dump plus the list of keys
+that were live that night, a few megabytes.
+
+### Setting it up
+
+The drive is a separate Linode Block Storage volume, not the root disk — that one
+already holds the photographs, and a backup that fills it takes the archive down.
+40 GB is roomy for a 20 GB archive. Attach it, then:
+
+```bash
+sudo mkfs.ext4 /dev/disk/by-id/scsi-0Linode_Volume_backup   # once, on a new volume
+sudo mkdir -p /mnt/backup
+echo '/dev/disk/by-id/scsi-0Linode_Volume_backup /mnt/backup ext4 defaults,nofail 0 2' \
+  | sudo tee -a /etc/fstab
+sudo mount -a
+```
+
+`nofail` matters: without it a detached volume stops the machine from booting.
+
+Then, in `/opt/sticker-song`, run the first backup by hand — it copies every
+photograph, so give it a tmux window — and install the timers:
+
+```bash
+make prod-backup
+sudo make prod-backup-install
+```
+
+After that there is nothing to remember. Two timers run: the backup at 03:10, and
+a check at 09:00 that says something if no backup has finished in 30 hours. They
+are separate on purpose — a timer that has stopped firing cannot report that it
+has stopped firing. `systemctl list-timers 'sticker-song-*'` is where they are,
+and `journalctl -u sticker-song-backup.service` is what they said.
+
+A timer rather than a service inside the compose file, unlike certbot, because
+the job needs both `pg_dump` and `mc` and no single image carries both — and this
+host must never build one. The logic lives in `ops/`, in git, which is also what
+makes a restore reachable from a machine that no longer exists.
+
+### Looking at it
+
+The review page has a backups tab: when the archive was last copied, and what the
+two copies hold. It reads the manifests off the drive, which is mounted read-only
+into the API — the archive can report on its backups and has no way to start one
+or delete one.
+
+On the box, `make prod-snapshots` says the same thing.
+
+Failures go to the Telegram channel and successes do not, which is the same rule
+everything else there follows. A backup that worked is visible in the tab.
+
+### Putting it back
+
+```bash
+make prod-restore SNAPSHOT=latest
+```
+
+It prints what will be destroyed and refuses until you pass the snapshot's id
+back as `CONFIRM=`. Then it verifies the snapshot's checksums, pins the images to
+the build the data came from, drops and rebuilds the database, writes every
+photograph back into the bucket, starts the stack and compares what is running
+against what the snapshot said it held — table by table, and every photograph the
+database refers to. It exits non-zero if anything does not match.
+
+`make prod-restore-verify SNAPSHOT=latest` runs that last comparison on its own,
+and only reads.
+
+Restoring an older snapshot onto newer images is expected to work: the dump
+carries its own `alembic_version`, and `init-db`'s `alembic upgrade head` then
+applies exactly the migrations between the snapshot and the running build.
+
+### From nothing at all
+
+The drive survives the machine — a Block Storage volume detaches from a dead
+Linode and attaches to a new one in minutes, which is usually the fastest way
+back. On the new box:
+
+```bash
+# Docker, then the volume, mounted at /mnt/backup as above.
+git clone --depth 1 https://github.com/ofryma/sticker-song /tmp/ss
+sudo mkdir -p /opt/sticker-song
+sudo cp /tmp/ss/.env.prod.example /opt/sticker-song/.env   # then fill it in
+sudo /tmp/ss/ops/restore.sh --snapshot latest
+```
+
+`restore.sh` notices it is not in `/opt/sticker-song`, copies the same four things
+the deploy workflow ships plus `ops/` and `scripts/` into place, and starts again
+from there. Afterwards, point DNS at the new address and run
+`make prod-cert EMAIL=you@example.org`.
+
+### Rehearsing it
+
+A restore nobody has ever run is not a restore. Both scripts take a
+`COMPOSE_FILE` override, so the whole thing can be rehearsed against a
+development stack without touching production:
+
+```bash
+mkdir -p /tmp/drill
+COMPOSE_FILE=docker-compose.yml BACKUP_DIR_HOST=/tmp/drill \
+  POSTGRES_USER=postgres POSTGRES_DB=stickers ops/backup.sh
+
+docker compose down -v && docker compose up -d          # an empty archive
+
+COMPOSE_FILE=docker-compose.yml BACKUP_DIR_HOST=/tmp/drill \
+  POSTGRES_USER=postgres POSTGRES_DB=stickers CONFIRM=<id> \
+  ops/restore.sh --snapshot latest
+```
+
+Worth doing after any change to the schema, the images, or these scripts.
+
 ## Notifications (Telegram)
 
-One private Telegram channel carries everything operational. Three things speak
-into it, over the same bot:
+One private Telegram channel carries everything operational. A handful of things
+speak into it, over the same bot:
 
 | What                     | Sent by                          | When                                          |
 | ------------------------ | -------------------------------- | --------------------------------------------- |
 | 📥 A new submission       | the API, `backend/app/notify.py`  | a photo is uploaded, right after the response  |
+| ✉️ A contact message      | the API, `backend/app/notify.py`  | somebody writes on /contact, after the response |
 | 🚢 A deploy finished      | `.github/workflows/deploy.yml`    | the stack is running the new version           |
 | ❌ A deploy failed        | `.github/workflows/deploy.yml`    | any step failed; the previous build is still up |
 | 🔴 The archive is down    | `.github/workflows/uptime.yml`    | `/api/health` missed three checks              |
+| 💾 A backup failed        | `ops/backup.sh`                   | the nightly copy did not finish                |
+| 💾 No backup last night   | `ops/backup_check.sh`             | nothing has finished in 30 hours               |
 
-The channel carries bad news and submissions, and nothing else. Recovery is
-silent, and so is a submission that was published without needing anyone.
+The channel carries bad news and the two things that need a person — a
+submission waiting for review and a message somebody wrote. Nothing else.
+Recovery is silent, and so is a submission that was published without needing
+anyone, and so is a bot that trips the contact form's honeypot. A backup that
+worked is silent too; the review page's backups tab is where a good night shows.
 
 Each message opens with its own glyph so the channel can be read at a glance.
 They are functional, not decorative — the archive's own interface carries no
@@ -608,6 +758,12 @@ slow or misconfigured is a log line and nothing more. The upload message is
 **text only** — the name, the transcription, and a **Review** button. The
 photograph has not been looked at by anybody yet, and an unreviewed image does
 not belong in a phone's notification tray.
+
+A contact message goes over whole, with its kind, the reply address if one was
+left, and a **Read** button. It is short by construction, and reading it is
+usually the whole job — a family asking for a sticker to come down should not
+wait for somebody to open the admin page. The submitter's IP stays out of it: it
+is a spam control, not something to carry around in a group chat.
 
 The button is a Telegram inline keyboard, which only accepts an `https` url and
 refuses the whole message otherwise, so a development `PUBLIC_URL` of
@@ -640,7 +796,7 @@ channel goes quiet. Standard library only, credentials from the flags, the
 environment or `.env`:
 
 ```
-scripts/telegram_check.py            # whoami, then a sample of all three messages
+scripts/telegram_check.py            # whoami, then a sample of all four messages
 scripts/telegram_check.py --check    # prove the bot can see the channel, post nothing
 scripts/telegram_check.py --find     # list the chats it can see, wrong id and all
 scripts/telegram_check.py --sample deploy

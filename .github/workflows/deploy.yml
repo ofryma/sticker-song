@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           ssh production bash -euo pipefail -s "'$DEPLOY_PATH'" <<'REMOTE'
           path="$1"
-          for cmd in make tar docker; do
+          for cmd in make tar docker python3; do
             command -v "$cmd" >/dev/null \
               || { echo "::error::$cmd is not installed on the deploy host"; exit 1; }
           done
@@ -106,16 +106,20 @@ jobs:
           REMOTE
 
       # Only the files the server actually runs: the compose file, the Makefile
-      # that drives it, and the edge config nginx mounts — templates (rendered
-      # with DOMAIN from the server's .env at container start) and the includes
-      # they pull in. The server's .env, nginx/certs, letsencrypt/ and volumes
-      # are never touched. tar over ssh so the server needs nothing but tar — no
-      # rsync, no git checkout to keep in sync.
+      # that drives it, the edge config nginx mounts — templates (rendered with
+      # DOMAIN from the server's .env at container start) and the includes they
+      # pull in — and the backup scripts the nightly timer calls. ops/ and
+      # scripts/ travel together: ops/notify.py borrows the Telegram plumbing
+      # from scripts/telegram_check.py, and finds the server's .env by resolving
+      # a path relative to it. The server's .env, nginx/certs, letsencrypt/ and
+      # the volumes are never touched. tar over ssh so the server needs nothing
+      # but tar — no rsync, no git checkout to keep in sync.
       - name: Ship stack files
         run: |
           set -euo pipefail
           ssh production "mkdir -p '$DEPLOY_PATH'"
           tar -czf - docker-compose.prod.yml Makefile nginx/templates nginx/include \
+            ops scripts \
             | ssh production "tar -xzf - -C '$DEPLOY_PATH'"
 
       # A token scoped to this run, valid only while it lasts — no long-lived PAT

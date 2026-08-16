@@ -123,6 +123,11 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       PUBLIC_URL: https://${DOMAIN}
+      # Where the backup drive is mounted inside the container, read-only. The
+      # review page reads the manifests ops/backup.sh leaves there; empty means
+      # no drive is attached and the page says so.
+      BACKUP_DIR: ${BACKUP_DIR:-/backups}
+      BACKUP_STALE_HOURS: ${BACKUP_STALE_HOURS:-30}
     depends_on:
       postgres:
         condition: service_healthy
@@ -135,6 +140,10 @@ services:
     logging: *default_logging
     image: ${IMAGE_REPO:-ghcr.io/ofryma/sticker-song}/backend:${IMAGE_TAG:-main}
     environment: *backend_env
+    volumes:
+      # Read-only, deliberately: the API reports on the backups and can neither
+      # write one nor delete one. That is ops/backup.sh's job, and only its job.
+      - ${BACKUP_DIR_HOST:-/mnt/backup}:/backups:ro
     expose:
       - "8000"
     depends_on:
@@ -269,6 +278,40 @@ services:
         condition: service_started
     mem_limit: ${NGINX_MEM:-40m}
     restart: unless-stopped
+
+  # --- the nightly backup's two tools ----------------------------------------
+  # Both sit behind `profiles`, so `up -d` never starts them and they cost
+  # nothing until ops/backup.sh calls them with `run --rm`. Declaring them here
+  # rather than as bare `docker run` lines is what gives them the compose
+  # network, the drive and a memory limit without repeating any of it in shell.
+  #
+  # Two images because no single one carries both pg_dump and mc, and this host
+  # must never build. postgres:16-alpine is already pulled; minio/mc is small
+  # and pinned the same way the server is.
+
+  backup-db:
+    profiles: ["tools"]
+    logging: *default_logging
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ${BACKUP_DIR_HOST:-/mnt/backup}:/backup
+    mem_limit: ${BACKUP_MEM:-96m}
+    restart: "no"
+
+  backup-objects:
+    profiles: ["tools"]
+    logging: *default_logging
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    # mc reads its target from MC_HOST_<alias> rather than an `mc alias set`
+    # step, which keeps the secret out of argv where `ps` would show it.
+    environment:
+      MC_HOST_live: http://${MINIO_ACCESS_KEY:-minioadmin}:${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY in .env}@minio:9000
+    volumes:
+      - ${BACKUP_DIR_HOST:-/mnt/backup}:/backup
+    mem_limit: ${BACKUP_MEM:-96m}
+    restart: "no"
 
 volumes:
   postgres_data:

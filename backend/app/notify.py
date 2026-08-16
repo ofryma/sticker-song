@@ -99,14 +99,64 @@ async def new_entry(entry_id: uuid.UUID, person_name: str, sticker_text: str) ->
         f"{html.escape(_trim(sticker_text, MAX_TEXT))}"
     )
 
-    # A tap target rather than a line of link text — the reviewer is on a phone.
-    # Telegram only accepts an https button, and refuses the whole message if the
-    # url is anything else, so a development PUBLIC_URL of http://localhost falls
-    # back to a plain link instead of costing the notification.
-    admin = _admin_url()
-    buttons = [("Review", admin)] if admin.startswith("https://") else None
-    if admin and buttons is None:
-        body += f'\n\n<a href="{html.escape(admin, quote=True)}">Review</a>'
-
+    body, buttons = _with_admin_link(body, "Review")
     if await send(body, buttons):
         logger.info("telegram: announced entry %s", entry_id)
+
+
+#: What a visitor picked on the contact form, in the words the channel reads in.
+MESSAGE_KINDS = {
+    "suggestion": "Suggestion",
+    "bug": "Something broken",
+    "entry_problem": "A problem with a sticker",
+}
+
+
+async def new_message(
+    message_id: uuid.UUID,
+    kind: str,
+    body_text: str,
+    reply_email: str | None = None,
+    entry_id: uuid.UUID | None = None,
+) -> None:
+    """Announce a message somebody wrote on the contact form.
+
+    The same reasoning as `new_entry`: this is the other thing here that needs a
+    person, and the tab count in the admin page only says so once somebody has
+    already opened it. A family asking for a sticker to come down should not wait
+    on that, so the whole message goes to the channel — it is short by
+    construction, and reading it is usually the whole job.
+
+    The reply address is included because whether one was left changes what a
+    reader can do about it. The submitter's IP is not: it is a spam control, not
+    something to carry around in a group chat.
+    """
+    lines = [
+        f"<b>✉️ New message — {html.escape(MESSAGE_KINDS.get(kind, kind))}</b>",
+        "",
+        html.escape(_trim(body_text, MAX_TEXT)),
+    ]
+    if reply_email:
+        lines += ["", f"Reply to: {html.escape(_trim(reply_email, 254))}"]
+    if entry_id is not None:
+        lines += ["", f"About entry <code>{entry_id}</code>"]
+
+    text, buttons = _with_admin_link("\n".join(lines), "Read")
+    if await send(text, buttons):
+        logger.info("telegram: announced message %s", message_id)
+
+
+def _with_admin_link(body: str, label: str) -> tuple[str, list[tuple[str, str]] | None]:
+    """The admin page as a tap target rather than a line of link text — whoever
+    reads this channel is on a phone.
+
+    Telegram only accepts an https button, and refuses the whole message if the
+    url is anything else, so a development PUBLIC_URL of http://localhost falls
+    back to a plain link instead of costing the notification.
+    """
+    admin = _admin_url()
+    if admin.startswith("https://"):
+        return body, [(label, admin)]
+    if admin:
+        body += f'\n\n<a href="{html.escape(admin, quote=True)}">{label}</a>'
+    return body, None

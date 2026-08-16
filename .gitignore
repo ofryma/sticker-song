@@ -10,3 +10,4 @@ nginx/certs/*.pem
 letsencrypt/
 .pytest_cache/
 .ruff_cache/
+backups/

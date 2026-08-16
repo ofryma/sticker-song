@@ -4,9 +4,10 @@ The same shape as the review queue: a filtered page, counts for the tabs, and a
 decision. A message is never deleted here — `dismissed` says somebody looked and
 there was nothing to do, which is worth telling apart from nobody having looked.
 
-Nothing notifies anyone: an admin opens /admin and the tab carries the open
-count. If a takedown request must not sit unseen, that is the place to add a
-webhook, and `todo.md` records the decision.
+Reading is what happens here; being told is not. A message announces itself to
+the Telegram channel as it arrives (`routers/messages.py`), so a takedown request
+does not wait for somebody to open /admin — the open count on the tab is for what
+is still outstanding, not for the news.
 """
 
 import logging

@@ -17,8 +17,9 @@ Standard library only, so it runs against a bare python3 on the server as
 happily as it does here.
 
 The sample messages are shaped like the real ones but they are not the real
-ones: the archive's upload notification lives in ``backend/app/notify.py``, and
-the deploy and downtime messages live in the two workflows under
+ones: the archive's upload and contact notifications live in
+``backend/app/notify.py``, and the deploy and downtime messages live in the two
+workflows under
 ``.github/workflows/``. This is a channel test, not a copy test.
 """
 
@@ -110,6 +111,16 @@ def sample(kind: str) -> tuple[str, dict]:
             "The transcribed sticker text goes here." + FOOTER,
             {"reply_markup": json.dumps(keyboard)},
         )
+    if kind == "message":
+        keyboard = {
+            "inline_keyboard": [[{"text": "Read", "url": "https://stkrmem.com/admin"}]]
+        }
+        return (
+            "<b>✉️ New message — A problem with a sticker</b>\n\n"
+            "What the visitor wrote goes here.\n\n"
+            "Reply to: someone@example.com" + FOOTER,
+            {"reply_markup": json.dumps(keyboard)},
+        )
     if kind == "deploy":
         return (
             "<b>🚢 Deploy finished</b>\n\n"
@@ -133,9 +144,9 @@ def main() -> int:
     parser.add_argument("--chat", default="", help="chat id; else TELEGRAM_CHAT_ID")
     parser.add_argument(
         "--sample",
-        choices=["upload", "deploy", "downtime", "all"],
+        choices=["upload", "message", "deploy", "downtime", "all"],
         default="all",
-        help="which sample message to send (default: all three)",
+        help="which sample message to send (default: all four)",
     )
     parser.add_argument(
         "--check", action="store_true", help="report only; post nothing to the channel"
@@ -205,7 +216,11 @@ def main() -> int:
         return 0
 
     # 3. Does a message actually land?
-    kinds = ["upload", "deploy", "downtime"] if args.sample == "all" else [args.sample]
+    kinds = (
+        ["upload", "message", "deploy", "downtime"]
+        if args.sample == "all"
+        else [args.sample]
+    )
     for kind in kinds:
         text, extra = sample(kind)
         try:
