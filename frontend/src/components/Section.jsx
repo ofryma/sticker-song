@@ -30,9 +30,7 @@ export function SectionHeading({ kicker, title, lead, action }) {
  */
 export function Page({ children, className = "", flush = false }) {
   return (
-    <div
-      className={`mx-auto max-w-6xl px-4 sm:px-8 ${flush ? "" : "pt-12 sm:pt-28"} ${className}`}
-    >
+    <div className={`mx-auto max-w-6xl px-4 sm:px-8 ${flush ? "" : "pt-12 sm:pt-28"} ${className}`}>
       {children}
     </div>
   );
